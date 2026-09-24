@@ -1,0 +1,29 @@
+# Law-Watch — offene Punkte, die sich bewegen
+
+> **Stand: September 2026.** Jede Zeile ist ein Punkt, der die Verdikte in `recht.md`, `services.md` oder `checklist.md` ändern kann und deshalb vor jedem Audit (WebSearch) und vor jedem Release (Bump von `law-stand`) geprüft wird. Spalte „Prüfen bis“ ist das Datum, ab dem die Angabe hier als *ungeprüft* gilt — `npm run validate` warnt, wenn es überschritten ist.
+>
+> Format: Punkt · aktueller Stand · was sich ändern würde · wo im Skill · Prüfen bis · Quelle für die Prüfung.
+
+| Punkt | Stand (2026-09) | Wenn es sich ändert | Betroffen | Prüfen bis | Quelle |
+|---|---|---|---|---|---|
+| **EU-US Data Privacy Framework — Rechtsmittel Latombe** | EuG T-553/23 hat die Klage am 03.09.2025 abgewiesen; Rechtsmittel zum EuGH am 31.10.2025 eingelegt, anhängig | Kippt der DPF, fallen alle „DPF-zertifiziert“-Verdikte auf SCC + TIA zurück; US-Analytics/Mailer/LLM werden 🟠→🔴 ohne SCC | `recht.md` Drittlandtransfer, `services.md` alle US-Zeilen, Deployment-Regel 6 | 2026-12 | curia.europa.eu (Rechtssache suchen: „Latombe“), EDPB-Pressemitteilungen |
+| **DPF-Liste einzelner Anbieter** | Liste ist die Quelle, nicht das Gedächtnis; Zertifizierungen laufen jährlich aus | Anbieter fällt von der Liste → nur noch SCC; im Bericht Entität + Datum der Prüfung nennen | jeder Bericht, Abschnitt 5 | bei jedem Audit | dataprivacyframework.gov/list |
+| **Digital Omnibus (Kommissionsvorschlag 19.11.2025)** | Im Gesetzgebungsverfahren; u. a. Cookie-Regeln als Art. 88a DSGVO, Ein-Klick-Ablehnung, 6-Monats-Sperre für erneute Abfrage, Browser-Signale. **Nicht geltendes Recht** | Bei Verkündung: § 25 TDDDG-Logik teils in der DSGVO; Banner-Anforderungen (Ablehnen-Button, Wiederholungsabfrage) ändern sich; Consent-Checkliste Abschnitt 3 umschreiben | `recht.md` Normen-Landkarte, `checklist.md` 3, Deployment-Regel 1 | 2026-12 | EUR-Lex (Verfahren suchen: „Digital Omnibus“ / Vorschlag vom 19.11.2025), Pressestellen von Rat und Parlament |
+| **EinwV / anerkannte Einwilligungsverwaltungsdienste (§ 26 TDDDG)** | Verordnung seit 01.04.2025 in Kraft; Anerkennung durch BfDI freiwillig; bisher wenige/keine anerkannten Dienste | Sobald PIMS anerkannt sind: Websites müssen deren Signale ggf. beachten; Bannerpflicht könnte für PIMS-Nutzer entfallen | `recht.md` Normen-Landkarte (TDDDG), `checklist.md` 3 | 2027-03 | bfdi.bund.de (Liste anerkannter Dienste) |
+| **KI-VO Art. 50 — Transparenz** | Gilt seit 02.08.2026 für Chatbots und KI-generierte Inhalte; maschinenlesbare Kennzeichnung für Anbieter per Digital Omnibus auf 02.12.2026 verschoben | Weitere Verschiebungen oder Leitlinien der Kommission (Code of Practice) ändern, *wie* gekennzeichnet werden muss | `checklist.md` 7, `services.md` KI-Modul, Deployment-Regel 8 | 2026-12 | digital-strategy.ec.europa.eu (AI Act), Kommission Leitlinien Art. 50 |
+| **DSK-Orientierungshilfe Telemedien** | Fassung 2021 (zu § 25 TTDSG) weiter maßgeblich; Anpassung an TDDDG/EinwV angekündigt | Neue Fassung kann Ausnahmen (§ 25 Abs. 2 Nr. 2) enger oder weiter fassen — CDN, Consent-Logging, Reichweitenmessung | `services.md` Hosting/CDN/Analytics, `checklist.md` 3 | 2027-03 | datenschutzkonferenz-online.de |
+| **Google Fonts / „Abmahnwelle“-Rechtsprechung** | LG München I 3 O 17493/20 steht; die Massenabmahnungen 2022 wurden überwiegend als rechtsmissbräuchlich eingestuft; vereinzelt Verfahren gegen Abmahner | Ein OLG/BGH-Urteil zur Sache selbst (nicht zum Missbrauch) würde das 🔴 bestätigen oder relativieren | `services.md` Fonts, Deployment-Regel 2 | 2027-03 | Aktenzeichen-Suche, dejure.org |
+| **Schadensersatz „Kontrollverlust“ (BGH VI ZR 10/24)** | Kontrollverlust kann Schaden sein, Größenordnung ~100 €; Folgeurteile der Instanzgerichte laufen | Höhere/niedrigere Beträge oder Erheblichkeitsschwelle ändern die Risiko-Formulierung im Bericht | `recht.md` Leitentscheidungen + Bußgeldrahmen | 2027-03 | bundesgerichtshof.de, EuGH-Vorlagen zu Art. 82 |
+| **reCAPTCHA / Turnstile — Behördenmeinung** | Aufsichtsbehörden verneinen 6(1)(f) für reCAPTCHA; Turnstile streitig | Positionspapier oder Urteil kippt Turnstile auf 🟠/🔴 oder reCAPTCHA-Consent-Lösung wird akzeptiert | `services.md` Captcha | 2027-03 | Tätigkeitsberichte LfDI BW, BayLDA, LDI NRW |
+| **Vercel / Netlify / Cloudflare Regionen & DPA** | EU-Regionen wählbar; Edge/Middleware global; DPA-Texte ändern sich | Neue Region-Optionen (z. B. EU-only Edge) oder DPA-Änderungen ändern 🟡-Begründungen | `services.md` Hosting, `patterns.md` Region-Pinning | 2027-03 | vercel.com/legal/dpa, Regions-Doku der Anbieter |
+| **LLM-Anbieter: EU-Endpunkte, Zero-Data-Retention, DPA** | OpenAI/Anthropic/Google bieten DPA; EU-Datenresidenz teils; ZDR auf Antrag | Neue EU-Endpunkte machen 🟡→🟢 möglich; Wegfall von ZDR umgekehrt | `services.md` KI-Modul | 2027-03 | Anbieter-Trust-/Legal-Seiten |
+| **BFSG (Barrierefreiheit)** | Seit 28.06.2025 für B2C-E-Commerce/-Dienste; Übergangsfristen für Bestandsverträge bis 2030 | Erste Bußgelder/Abmahnungen ändern, wie prominent das Skill den Punkt flaggt | `checklist.md` 11 | 2027-06 | bfsg-gesetz.de, Marktüberwachungsstellen |
+| **OS-Plattform-Link** | Plattform seit 20.07.2025 abgeschaltet; Link = irreführend (§ 5 UWG) | Nichts erwartet; Zeile bleibt als Erinnerung, den Link zu *entfernen*, nicht zu fordern | `checklist.md` 1, `impressum-template.md` | 2027-06 | VO (EU) 2024/3228 |
+
+## Ablauf bei einer Änderung
+
+1. Quelle lesen, Aktenzeichen/Nummer notieren.
+2. Betroffene Datei(en) ändern, Begründung inline (siehe `CONTRIBUTING.md`, „Legal update checklist“).
+3. Zeile hier aktualisieren: Stand, Prüfen-bis-Datum, Quelle.
+4. `npm run version:bump -- <x.y.z> --law-stand YYYY-MM`, Eintrag in `CHANGELOG.md`.
+5. Wenn das Verdikt sich ändert: Erwartung in `evals/evals.json` anpassen, Evals gegen die Vorversion laufen lassen.

@@ -1,0 +1,74 @@
+# dsgvo-gate.yml — example GitHub Actions workflow that turns the skill's two scanners into a CI gate.
+#
+# Copy to .github/workflows/ in the client project and adjust the two marked lines.
+#
+# Job 1 (static, every PR):   lint-origins.mjs --strict  → fails when the code loads fonts/CDN assets or
+#                              reCAPTCHA from the vendor, or references a tracker with no consent gate in sight.
+# Job 2 (runtime, on deploy): scan-origins.mjs --strict  → fails when anything non-essential fires before
+#                              consent or after "Ablehnen" on the preview URL, on the start page and on --pages.
+#
+# Both scripts live in the skill folder. Get them via the plugin (~/.claude/plugins/…/skills/dsgvo-audit/scripts)
+# or, as here, by checking out the skill repo next to the project. The gate is evidence, not a verdict:
+# a green run means "nothing fired before consent on these pages", not "the site is compliant".
+
+name: Datenschutz gate
+
+on:
+  pull_request:
+  deployment_status:        # Vercel/Netlify/Cloudflare Pages post a deployment_status with the preview URL
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL to scan (preview or production)
+        required: true
+
+jobs:
+  static:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: lxhelili/dsgvo-audit      # ← the skill repo (or vendor the scripts/ folder)
+          path: .dsgvo-audit
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Static origin lint
+        run: node .dsgvo-audit/skills/dsgvo-audit/scripts/lint-origins.mjs . --own example.de --out lint.json --strict   # ← your domain
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: dsgvo-lint
+          path: lint.json
+
+  runtime:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+    runs-on: ubuntu-latest
+    env:
+      TARGET: ${{ github.event.inputs.url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: lxhelili/dsgvo-audit      # ← the skill repo
+          path: .dsgvo-audit
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm i --no-save playwright && npx playwright install --with-deps chromium
+      - name: Runtime scan (pre-consent, after reject, after accept)
+        # Preview deployments behind Vercel Authentication need a bypass: pass ?x-vercel-protection-bypass=… or
+        # set the header via a proxy; the scanner itself sends no auth. Exit 3 = page not loaded → job fails
+        # without a verdict, which is the intended behaviour: a failed scan must never look like a pass.
+        run: >-
+          node .dsgvo-audit/skills/dsgvo-audit/scripts/scan-origins.mjs "$TARGET"
+          --pages "/kontakt,/impressum,/datenschutz"
+          --out scan.json --strict
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: dsgvo-scan
+          path: scan.json

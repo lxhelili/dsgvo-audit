@@ -46,6 +46,8 @@ Wir sind [nicht] bereit und [nicht] verpflichtet, an Streitbeilegungsverfahren v
 **Bildnachweise**
 [QUELLE / LIZENZ]
 
+Stand: [DATUM]
+
 ---
 
 ### Prüfhinweise

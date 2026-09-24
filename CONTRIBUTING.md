@@ -32,7 +32,7 @@ npm run package     # builds dist/dsgvo-audit.skill
 
 `npm run validate` checks: frontmatter keys, description ≤ 1024 chars, every file referenced from SKILL.md exists, plugin/marketplace/package/SKILL versions in sync, CHANGELOG section for the version, agent frontmatter, no known regressions (brace-glob grep, § 7 Nr. 3 UWG, OS-Plattform link without removal note).
 
-`tests/phase1.test.sh` runs the *actual* bash block from SKILL.md against `tests/fixtures/repo` — if you edit the grep commands, this is what keeps them working. `tests/grade-report.test.mjs` checks that `scripts/grade-report.mjs` accepts the golden report/DSE/Impressum fixtures and rejects the broken one; `tests/scanner.test.mjs` runs the scanner end-to-end against three cases.
+`tests/phase1.test.sh` runs the *actual* bash block from SKILL.md against `tests/fixtures/repo` — if you edit the grep commands, this is what keeps them working. `tests/grade-report.test.mjs` checks that `scripts/grade-report.mjs` accepts the golden report/DSE/Impressum fixtures and rejects the broken one; `tests/tools.test.mjs` runs the static linter, the GTM parser and the HAR parser against fixtures (no browser); `tests/scanner.test.mjs` runs the scanner end-to-end against four cases.
 
 Branch from `main`, open a PR, fill the checklist. CI runs the same three commands.
 
@@ -44,7 +44,7 @@ Pick the right table in `references/services.md`, keep the columns:
 | <Dienst> | <Consent § 25: ja / nein / streitig> | <DSGVO-Basis> | <Drittland / Region> | <🔴🟠🟡🟢 + one-line reasoning + safer alternative> |
 ```
 
-Add the origin regex to the `SIGNATURES` list in `scripts/scan-origins.mjs` so the scanner labels it, and — if a service needs a DSE module beyond the generic one — a module to `assets/datenschutzerklaerung-template.md`.
+Add the origin regex to `scripts/lib/signatures.mjs` so the scanner, the static linter and both parsers label it, and — if a service needs a DSE module beyond the generic one — a module to `assets/datenschutzerklaerung-template.md`.
 
 ## Legal update checklist
 
@@ -52,6 +52,7 @@ Add the origin regex to the `SIGNATURES` list in `scripts/scan-origins.mjs` so t
 2. If the change affects verdicts, update `checklist.md` and/or `services.md` in the same PR.
 3. Bump the law stand: `npm run version:bump -- <x.y.z> --law-stand YYYY-MM` (minor for new content, patch for corrections, major if verdicts or the report structure change).
 4. Add a line under `[Unreleased]` in `CHANGELOG.md`.
+5. Update the row in `references/law-watch.md` (stand, re-check date, source) — `npm run validate` warns when a re-check date has passed.
 
 ## Releasing (maintainers)
 

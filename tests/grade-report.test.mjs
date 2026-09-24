@@ -40,4 +40,17 @@ console.log('grade-report against golden fixtures:');
   const r = await grade('--report', join(FIX, 'good-report.md'), '--expect-no', 'Google Fonts');
   check(r.code === 1 && /❌ --expect-no \/Google Fonts\//.test(r.out), '--expect-no fails when the pattern is present');
 }
+{
+  // Regression: 🟡/🟢 headings share a UTF-16 surrogate with 🔴/🟠 — without the `u` flag they were graded as critical blocks.
+  // And a negated/quoted forbidden phrase („keine ‚100 % konform'-Siegel") is not a claim.
+  const { writeFileSync, readFileSync, unlinkSync } = await import('node:fs');
+  const tmp = join(ROOT, 'dist-grade-test.md');
+  const golden = readFileSync(join(FIX, 'good-report.md'), 'utf8');
+  writeFileSync(tmp, golden.replace('## 3. Datenfluss-Übersicht', '### 🟡 M-01 Security-Header fehlen\n**Befund:** keine CSP.\n**Maßnahme:** setzen.\n\n## 3. Datenfluss-Übersicht')
+    .replace('## 7. Offene Fragen', '| § 5 UWG | 🟢 | Keine „100 % DSGVO-konform“-Siegel im Codestand |\n\n## 7. Offene Fragen'));
+  const r = await grade('--report', tmp);
+  check(!/❌ Every 🔴\/🟠 finding block/.test(r.out), 'a 🟡 block without the five fields is not graded as a critical block (u flag)');
+  check(!/❌ Report makes no forbidden claim/.test(r.out), 'a negated/quoted „100 % konform“ is not a forbidden claim');
+  unlinkSync(tmp);
+}
 process.exit(status);

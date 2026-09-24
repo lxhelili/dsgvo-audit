@@ -39,6 +39,8 @@ Spalten: **Consent (§ 25)** = braucht Endgerät-Einwilligung · **Basis** = DSG
 | Friendly Captcha (EU-Endpoint) | nein | 6(1)(f) | DE/EU | 🟢 AVV abschließen, DSE-Modul |
 | Formspree / Tally / Typeform / Google Forms | — (Formularziel) | 6(1)(b)/(f) | US | 🟠; **🔴 bei Art.-9-Inhalt** (R). Eigenes Backend bevorzugen |
 | Calendly | **ja** (Embed) | 6(1)(a)/(b) | US | 🟠; **🔴 bei Heilberufen** (R) — Art. 9 im Terminbetreff. Alternative: Cal.com self-hosted / EU-Buchungstool |
+| Doctolib (Widget/Link) | Widget: **ja** (lädt Script + iframe von doctolib.de); reiner Link: nein | 6(1)(b), Art. 9(2)(h) für die Behandlungsdaten | FR/DE (EU-Hosting, Doctolib GmbH Berlin) | 🟡 Als **Link/Button** einbinden, nicht als vorgeladenes Widget — dann kein Endgerätzugriff vor Klick. Doctolib ist für die Buchungsdaten i. d. R. **eigener Verantwortlicher** (Nutzerkonto beim Anbieter) → in DSE als Empfänger mit Verweis auf dessen DSE nennen, kein AVV-Automatismus; Praxis-Anbindung (Kalender-Sync) separat als Auftragsverarbeitung prüfen. Für Heilberufe die EU-Alternative zu Calendly |
+| jameda / samedi / Timify (Terminbuchung) | Widget: ja; Link: nein | 6(1)(b), Art. 9 | DE/EU | 🟡 wie Doctolib: Link statt Widget; Rollenverteilung (Verantwortlicher vs. Auftragsverarbeiter) beim Anbieter nachlesen und in der DSE so benennen |
 
 ## Embeds & Widgets
 
@@ -68,6 +70,7 @@ Spalten: **Consent (§ 25)** = braucht Endgerät-Einwilligung · **Basis** = DSG
 | Cloudflare (Proxy/WAF/DNS) | — | 6(1)(f) | US-Konzern | 🟡 DPA + EU-Region; als Empfänger nennen |
 | Zapier / Make / n8n Cloud | — | folgt dem Zweck | US / EU | 🟠 Zusätzlicher Auftragsverarbeiter mit Transfer — DPA oder n8n self-hosted |
 | CRM (HubSpot, Pipedrive, eigenes) | Widget: ja; Sync: — | 6(1)(b)/(f) | US / EE / — | 🟡 DPA, Region, Löschkonzept; Marketing-Automation nur mit Einwilligung |
+| **Microsoft 365 / Google Workspace** (Postfach, in das Formulare und Kontakt-Mails laufen) | — | 6(1)(b)/(f) | US-Konzern; EU-Datenresidenz wählbar (M365 EU Data Boundary, Workspace Data Regions) | 🟡 Der meistübersehene Auftragsverarbeiter: jede Formularanfrage endet hier. DPA (Microsoft DPA / Google Workspace DPA) + DPF-Status der Entität + EU-Region; als Empfänger in DSE nennen (Modul Kontaktaufnahme/Hosting); Löschkonzept fürs Postfach. **Art. 9** (Praxis-Anfragen): (R) nur mit EU-Residenz, § 203-Absicherung im Vertrag, sonst eigenes Mailsystem beim DE-Hoster |
 | Social Login (Google, Apple, Microsoft, GitHub) | — | 6(1)(b) | US | 🟡 Scopes minimal; Anbieter als Empfänger + eigenes DSE-Modul; Alternative E-Mail-Login anbieten |
 
 ## KI / LLM-APIs (OpenAI, Anthropic, Google Gemini, Mistral, Groq, Azure OpenAI)

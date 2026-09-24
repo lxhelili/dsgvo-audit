@@ -1,0 +1,40 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-09-20 10:00:00",
+  "containerVersion": {
+    "container": { "publicId": "GTM-FIXTURE", "name": "example.de (Fixture)" },
+    "tag": [
+      {
+        "tagId": "1", "name": "GA4 - Config", "type": "googtag",
+        "parameter": [{ "type": "TEMPLATE", "key": "tagId", "value": "G-FIXTURE1" }],
+        "firingTriggerId": ["2147479553"]
+      },
+      {
+        "tagId": "2", "name": "Meta Pixel (Custom HTML)", "type": "html",
+        "parameter": [{ "type": "TEMPLATE", "key": "html", "value": "<script>!function(f,b,e,v,n,t,s){n=f.fbq=function(){};t=b.createElement(e);t.src='https://connect.facebook.net/en_US/fbevents.js';s.parentNode.insertBefore(t,s)}(window,document,'script');fbq('init','123');</script>" }],
+        "firingTriggerId": ["2147479553"]
+      },
+      {
+        "tagId": "3", "name": "Hotjar", "type": "hjtc",
+        "parameter": [{ "type": "TEMPLATE", "key": "hotjar_site_id", "value": "999" }],
+        "firingTriggerId": ["10"]
+      },
+      {
+        "tagId": "4", "name": "Ads Conversion - Lead", "type": "awct",
+        "parameter": [{ "type": "TEMPLATE", "key": "conversionId", "value": "AW-FIXTURE" }],
+        "firingTriggerId": ["11"],
+        "consentSettings": { "consentStatus": "NEEDS_CONSENT", "consentType": { "type": "LIST", "list": [{ "type": "TEMPLATE", "value": "ad_storage" }] } }
+      },
+      {
+        "tagId": "5", "name": "Old UA (paused)", "type": "ua", "paused": true,
+        "parameter": [{ "type": "TEMPLATE", "key": "trackingId", "value": "UA-1" }],
+        "firingTriggerId": ["2147479553"]
+      }
+    ],
+    "trigger": [
+      { "triggerId": "10", "name": "Consent - Statistics granted", "type": "CUSTOM_EVENT" },
+      { "triggerId": "11", "name": "Form submit - Kontakt", "type": "FORM_SUBMISSION" }
+    ],
+    "variable": []
+  }
+}

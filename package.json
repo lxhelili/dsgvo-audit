@@ -1,6 +1,6 @@
 {
   "name": "dsgvo-audit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Claude skill + plugin: DSGVO/TDDDG/DDG compliance audit for websites and web apps under German law.",
   "type": "module",
@@ -11,13 +11,19 @@
   },
   "scripts": {
     "validate": "node scripts/validate.mjs",
-    "test": "npm run validate && bash tests/phase1.test.sh && node tests/grade-report.test.mjs && node tests/scanner.test.mjs",
+    "test": "npm run validate && bash tests/phase1.test.sh && node tests/grade-report.test.mjs && node tests/tools.test.mjs && node tests/scanner.test.mjs",
     "test:phase1": "bash tests/phase1.test.sh",
     "test:grader": "node tests/grade-report.test.mjs",
     "test:scanner": "node tests/scanner.test.mjs",
+    "test:tools": "node tests/tools.test.mjs",
     "scan": "node skills/dsgvo-audit/scripts/scan-origins.mjs",
+    "lint-origins": "node skills/dsgvo-audit/scripts/lint-origins.mjs",
+    "gtm": "node skills/dsgvo-audit/scripts/parse-gtm.mjs",
+    "har": "node skills/dsgvo-audit/scripts/parse-har.mjs",
+    "render": "node skills/dsgvo-audit/scripts/render-report.mjs",
     "grade": "node scripts/grade-report.mjs",
     "package": "node scripts/package-skill.mjs",
+    "evals:summary": "node scripts/summarize-evals.mjs",
     "version:bump": "node scripts/bump-version.mjs"
   },
   "devDependencies": {

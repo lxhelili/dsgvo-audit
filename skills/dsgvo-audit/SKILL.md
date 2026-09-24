@@ -3,7 +3,7 @@ name: dsgvo-audit
 description: Audit a website, web app or codebase for DSGVO/GDPR, TDDDG (cookie consent) and DDG (Impressum) compliance under German law, tracing personal data from browser to backend to third parties, and generate or fix the Datenschutzerklärung, Impressum, cookie banner and consent gating. Use when the user shares a site or repo for review, asks whether a site is "legally OK" or "abmahnsicher", or mentions Datenschutz, DSGVO, GDPR, Datenschutzerklärung, Privacy Policy, Impressum, Cookie-Banner, Consent, TDDDG, AVV/DPA, Auftragsverarbeitung, Drittlandtransfer or Abmahnung, even casually ("check this site", "add datenschutz"). Also use when a third-party service is added to a client site (analytics, fonts, maps, captcha, pixel, embeds, booking, newsletter, AI/LLM API, chat widget, payment, social login) or the user asks whether it is allowed. Not for ordinary dev work that merely uses Supabase, Vercel or Resend without a compliance question.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   law-stand: "2026-09"
   repository: https://github.com/lxhelili/dsgvo-audit
 ---
@@ -59,6 +59,12 @@ ls -1 next.config.* vercel.json netlify.toml wrangler.toml astro.config.* nuxt.c
 grep -hoE '^[A-Z_]*(GA|GTM|ANALYTICS|SENTRY|OPENAI|ANTHROPIC|RESEND|SUPABASE|STRIPE|PAYPAL|RECAPTCHA|TURNSTILE|HUBSPOT|MAILCHIMP|BREVO)[A-Z_]*=' .env* 2>/dev/null | sort -u
 ```
 
+The same patterns as one command, with JSON and an exit code for CI (`lint-origins.mjs`): it lists SDKs by class, third-party origins in load contexts, device storage, server-side recipients, config files, function regions and env key names (never values). `--strict` fails on fonts/CDN assets/reCAPTCHA from the vendor and on trackers with no consent gate in sight. Static evidence says what the code *can* load; whether it happens before consent only the runtime scan can say.
+
+```bash
+node <skill-dir>/scripts/lint-origins.mjs . --own client.de --out lint-client.json   # --strict for CI
+```
+
 Then trace the data flow with `references/architecture.md` (browser → edge/middleware → API/server actions → database → third-party processors → logs/monitoring/CI). A contact form is not "a form"; it is a pipeline with four or five recipients.
 
 **1b. Live URL → runtime scan.** A fetch of the HTML cannot see runtime-injected tags, `Set-Cookie` headers from API/redirect responses, or what a CMP actually blocks. Run the bundled scanner:
@@ -71,11 +77,11 @@ node <skill-dir>/scripts/scan-origins.mjs https://client.de --out scan-client.js
 # exit code 3 = page not loaded, no verdict → use the fallbacks below or run the scan locally.
 ```
 
-It records every third-party origin, cookie and storage key **before** any consent interaction, again after clicking "Ablehnen", and after "Akzeptieren" (the full service list for the DSE), and checks Impressum/Datenschutz links and the stale OS-Plattform link. Scan the subpages that matter (Kontakt, Buchung, Checkout, Login) separately — one scan is one page, one state, one moment. A scan that exits 3 or reports HTTP 403/429/503 is not evidence — say so rather than reading its empty result as "clean".
+It records every third-party origin, cookie and storage key **before** any consent interaction, again after clicking "Ablehnen", and after "Akzeptieren" (the full service list for the DSE), checks Impressum/Datenschutz links and the stale OS-Plattform link, and reports security headers, first-party cookie attributes, mixed content and form targets (checklist 6 and 10). Scan the subpages that matter (Kontakt, Buchung, Checkout, Login) with `--pages "/kontakt,/buchung"` or `--sitemap` — each page runs in a fresh profile, so one scan is still one page, one state, one moment; the JSON lists them under `pages`. A scan that exits 3 or reports HTTP 403/429/503 is not evidence — say so rather than reading its empty result as "clean".
 
-Fallbacks, in order: (1) browser tools if a Chrome/built-in browser is connected — navigate, read the network requests, evaluate `document.cookie` and `Object.keys(localStorage)` before any click, after "Ablehnen", after "Akzeptieren"; (2) fetch the HTML and read `<script>`, `<iframe>`, `<link rel=preconnect|dns-prefetch>`, font URLs, then fetch `/impressum`, `/datenschutz`, `/privacy`; (3) ask the user for a DevTools screenshot (Network + Application → Cookies) or a HAR file. Always state which level you reached and what it cannot see.
+Fallbacks, in order: (1) browser tools if a Chrome/built-in browser is connected — navigate, read the network requests, evaluate `document.cookie` and `Object.keys(localStorage)` before any click, after "Ablehnen", after "Akzeptieren"; (2) fetch the HTML and read `<script>`, `<iframe>`, `<link rel=preconnect|dns-prefetch>`, font URLs, then fetch `/impressum`, `/datenschutz`, `/privacy`; (3) ask the user for a DevTools screenshot (Network + Application → Cookies) or a HAR file — a HAR goes through `scripts/parse-har.mjs`, which writes the scanner's JSON shape (`--phase` says which banner state the client recorded; storage keys are not in a HAR, ask for the Application tab). Always state which level you reached and what it cannot see.
 
-**1c. Google Tag Manager detected** (`googletagmanager.com/gtm.js?id=GTM-…`) → the container is a black box; tags inside it are invisible to both grep and scanner until they fire. Ask for a **container export** (GTM → Admin → Export Container → JSON) or a screenshot of the tag list. Without it, the whole tracking section is ⚪️, and note that tags inside GTM inherit consent gating only if GTM itself is gated (or Consent Mode is wired correctly).
+**1c. Google Tag Manager detected** (`googletagmanager.com/gtm.js?id=GTM-…`) → the container is a black box; tags inside it are invisible to both grep and scanner until they fire. Ask for a **container export** (GTM → Admin → Export Container → JSON) and run `scripts/parse-gtm.mjs export.json --md` — it lists every tag with type, triggers, Consent-Mode settings and the origins inside Custom HTML, and marks tags that fire on All Pages without a consent condition 🔴. Without the export, the whole tracking section is ⚪️, and note that tags inside GTM inherit consent gating only if GTM itself is gated (or Consent Mode is wired correctly — which the runtime scan verifies, the export cannot).
 
 **1d. Multiple languages?** If the site has a language switch, every language needs its own Datenschutzerklärung and Impressum (Art. 12(1): information in a form the addressee understands). A German-only DSE on an English-targeted site is a 🟠. German stays the authoritative version.
 
@@ -107,11 +113,11 @@ Load `references/checklist.md` and work through every section. Status per item:
 | 🟢 **OK** | Conforms |
 | ⚪️ **Unklar** | Needs client input or runtime verification — say exactly what you need |
 
-For third-party services use `references/services.md` (legal basis, consent, transfer mechanism, safer alternative). For the legal reasoning, citations and current case law use `references/recht.md`. Verify anything time-sensitive — DPF list status of a specific entity, DSFA Positivlisten, new rulings — with a web search; the references carry a "Stand" date and the law moves.
+For third-party services use `references/services.md` (legal basis, consent, transfer mechanism, safer alternative). For the legal reasoning, citations and current case law use `references/recht.md`. Verify anything time-sensitive — DPF list status of a specific entity, DSFA Positivlisten, new rulings — with a web search; `references/law-watch.md` lists the open points, what would change and where to check; the references carry a "Stand" date and the law moves.
 
 ### Phase 4 — Report
 
-Write `datenschutz-audit-<domain>-<YYYY-MM-DD>.md` (offer HTML/PDF for client delivery) with exactly this structure:
+Write `datenschutz-audit-<domain>-<YYYY-MM-DD>.md` (for client delivery: `scripts/render-report.mjs` → HTML, `--pdf` → PDF) with exactly this structure:
 
 1. **Management Summary** — max 5 bullets, Ampel status, top 3 risks in plain German, one sentence on evidence level (code + runtime scan / URL only / description only)
 2. **Kritische und hohe Befunde** — one block per finding (format below)
@@ -142,9 +148,12 @@ Aufwand scale: **S** < 2 h · **M** ≤ 1 Tag · **L** > 1 Tag or needs a client
 
 - **Datenschutzerklärung** from `assets/datenschutzerklaerung-template.md`: delete every module for a service the evidence doesn't show, fill every `[PLATZHALTER]`. Never leave a placeholder in a delivered file — list unfilled ones at the top of your message instead.
 - **Impressum** from `assets/impressum-template.md`.
+- **English version** for multilingual sites from `assets/privacy-policy-template.en.md` — same module numbers as the German template, so delete the same modules in both; the terminology table at its top keeps "processor / legitimate interest / withdrawal" consistent; section 21 says German prevails.
 - **Consent gating** per `references/patterns.md`: gate the *load*, not the *use*; nothing non-essential leaves the browser before consent; verify with the scanner afterwards.
-- **Cookie banner**: no pre-ticked boxes; "Ablehnen" on the first layer, as prominent and as few clicks as "Akzeptieren"; granular purposes; withdrawal as easy as consent (Art. 7(3)) via a persistent link; links to DSE and Impressum; no nag loops or dark patterns; no cookie wall for essential content; the CMP itself hosted first-party or in the EU.
-- **Re-run Phase 3 and the scanner on your own output** before declaring done.
+- **Cookie banner**: texts and category tables from `assets/cookie-banner-texte.md` (first layer, settings layer, two-click placeholder, footer link, English variant) — only the categories and services the "after accept" scan shows; no banner at all when nothing needs consent. Rules: no pre-ticked boxes; "Ablehnen" on the first layer, as prominent and as few clicks as "Akzeptieren"; granular purposes; withdrawal as easy as consent (Art. 7(3)) via a persistent link; links to DSE and Impressum; no nag loops or dark patterns; no cookie wall for essential content; the CMP itself hosted first-party or in the EU.
+- **VVT and TOMs** (checklist section 9) from `assets/vvt-template.md` and `assets/toms-template.md`: every row of the Datenfluss-Übersicht becomes one Verarbeitungstätigkeit; in the TOMs mark each measure (S) = proven by the scan/lint/code with the evidence location, or (A) = the client's statement — never upgrade an (A) to (S).
+- **Client delivery**: `scripts/render-report.mjs report.md --out report.html` turns any produced Markdown (report, DSE, Impressum, VVT, TOMs) into a self-contained HTML file (no external fonts or scripts — the report follows the skill's own rule) with print styles; `--pdf` adds a PDF via Playwright when it is installed.
+- **Re-run Phase 3 and the scanner on your own output** before declaring done: no `[PLATZHALTER]` left, every 🔴/🟠 block has Befund/Rechtsgrundlage/Risiko/Maßnahme/Aufwand, RDG note at the end, no "abmahnsicher". (In the skill's own repository, `npm run grade` checks exactly that.)
 
 ---
 
@@ -169,12 +178,22 @@ Adjacent obligations to **flag, not audit** when someone asks "ist die Seite rec
 
 ## Files
 
-- `scripts/scan-origins.mjs` — runtime scanner: pre-consent origins/cookies/storage, after-reject diff, after-accept inventory, Pflichtseiten check (Phase 1b)
+- `scripts/scan-origins.mjs` — runtime scanner: pre-consent origins/cookies/storage, after-reject diff, after-accept inventory, Pflichtseiten check, headers/cookie attributes/mixed content/forms, `--pages`/`--sitemap` (Phase 1b)
+- `scripts/lint-origins.mjs` — static lint: SDKs, origins in load contexts, storage, server-side recipients, config/regions/env key names as JSON + exit code (Phase 1a)
+- `scripts/parse-gtm.mjs` — GTM container export → tag table with triggers, Consent Mode, origins and verdict (Phase 1c)
+- `scripts/parse-har.mjs` — client-recorded HAR → scanner JSON shape (Phase 1b fallback 3)
+- `scripts/lib/signatures.mjs` — the one origin list all four scripts share
 - `references/architecture.md` — full-stack data-flow trace, hop by hop, with framework hints for finding handlers (Phase 1a, report section 3)
 - `references/checklist.md` — the audit checklist (Phase 3)
 - `references/services.md` — per-service verdicts incl. AI APIs, captchas, analytics, hosting (Phase 3)
 - `references/recht.md` — norms, legal bases, case law, fines, DSB/DSFA triggers, rule-vs-law, RDG text; carries its Stand date
+- `references/law-watch.md` — open legal points (DPF appeal, Digital Omnibus, EinwV, KI-VO…), what would change, where to verify, re-check dates
 - `references/patterns.md` — consent gating and self-hosting: generic principles, then Next.js / Angular / Astro / plain HTML examples (Phase 5)
 - `assets/datenschutzerklaerung-template.md` — modular German policy template incl. AI, login, payment modules
 - `assets/impressum-template.md` — § 5 DDG template incl. Heilberufe / Pflegedienst variants
+- `assets/privacy-policy-template.en.md` — English mirror of the DSE template (same module numbers, terminology table, "German prevails" clause) for multilingual sites
+- `assets/cookie-banner-texte.md` — banner texts: first layer, settings layer with category tables, two-click placeholder, footer/withdrawal, English variant, and the rule checklist the texts must satisfy
+- `assets/vvt-template.md` — Verzeichnis von Verarbeitungstätigkeiten (Art. 30) with the eleven typical website activities pre-structured
+- `assets/toms-template.md` — TOMs (Art. 32) along the Gewährleistungsziele, each measure marked (S) proven by scan/lint/code or (A) client statement
+- `scripts/render-report.mjs` — Markdown → self-contained HTML (print-ready) for client delivery; `--pdf` via Playwright when available (Phase 4/5)
 - `agents/dsgvo-auditor.md` — Claude Code subagent definition (auto-installed with the plugin; from the `.skill` package copy it to `.claude/agents/`)

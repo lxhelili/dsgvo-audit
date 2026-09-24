@@ -40,6 +40,19 @@ else {
   if (ageMonths > 4) warn(`SKILL.md: law-stand ${lawStand} is ${ageMonths} months old — re-verify references/recht.md and services.md (DPF status, § 25 TDDDG / Digital Omnibus, KI-VO deadlines, DSK guidance, court rulings), then bump with --law-stand`);
 }
 
+// ---------- law-watch: every row has a re-check date; overdue rows are a warning ----------
+const lawWatch = join(SKILL_DIR, 'references', 'law-watch.md');
+if (!existsSync(lawWatch)) warn('references/law-watch.md missing');
+else {
+  const today = new Date().toISOString().slice(0, 7);
+  for (const row of readFileSync(lawWatch, 'utf8').split('\n').filter((l) => /^\| \*\*/.test(l))) {
+    const cells = row.split('|').map((c) => c.trim());
+    const point = cells[1].replace(/\*\*/g, ''); const due = cells[5];
+    if (!/^\d{4}-\d{2}$/.test(due) && !/bei jedem Audit/.test(due)) fail(`law-watch.md: "${point}" has no YYYY-MM re-check date (got "${due}")`);
+    else if (/^\d{4}-\d{2}$/.test(due) && due < today) warn(`law-watch.md: "${point}" was due for re-check ${due} — verify and update the row`);
+  }
+}
+
 const bodyLines = skillMd.split('\n').length;
 if (bodyLines > 500) warn(`SKILL.md is ${bodyLines} lines — the guideline is < 500; move detail into references/`);
 

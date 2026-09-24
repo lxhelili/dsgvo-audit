@@ -13,7 +13,7 @@ It is built for agencies and freelancers who ship client sites in Germany and wa
 1. **Evidence, never guesswork.** Scans the codebase (dependencies, source, config, env key names), runs a **Playwright runtime scanner** against the live site that records every third-party origin, cookie and storage key *before* any consent interaction, after "Ablehnen" and after "Akzeptieren", and traces personal data hop by hop: browser → edge/middleware → API/server actions → database → third-party processors (mail, AI APIs, CRM, payment) → logs, monitoring, CI.
 2. **Audits** against a 100+ item checklist: Impressum, Art. 13 information duties, § 25 TDDDG consent, processors and third-country transfers, backend data flow, forms, AI features (Art. 22 DSGVO, Art. 50 KI-VO), Art. 9 health data for practices and care services, organisational duties, security headers.
 3. **Reports** in German with 🔴/🟠/🟡/🟢/⚪️ statuses, a data-flow table, a per-finding block (Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand) and a prioritised action plan.
-4. **Fixes** on request: modular Datenschutzerklärung and Impressum templates, consent-gating patterns (framework-agnostic principles + examples for plain HTML, Next.js, Angular, Astro, WordPress), then re-audits its own output.
+4. **Fixes** on request: modular Datenschutzerklärung (DE + EN), Impressum, cookie-banner text, VVT (Art. 30) and TOMs (Art. 32) templates, consent-gating patterns (framework-agnostic principles + examples for plain HTML, Next.js, Angular, Astro, WordPress), then re-audits its own output.
 
 Verdicts for ~50 common services (Google Fonts/Analytics/Maps/reCAPTCHA, Meta Pixel, YouTube, Hotjar, Matomo, Plausible, Vercel, Supabase, Firebase, Resend, Sentry, Stripe, Calendly, OpenAI/Anthropic/Gemini APIs, Turnstile, Friendly Captcha, …) live in [`references/services.md`](skills/dsgvo-audit/references/services.md).
 
@@ -58,7 +58,23 @@ npm run scan -- https://example.de --strict               # exit 1 if anything t
 npm run scan -- https://example.de --reject "Nur notwendige" --no-accept
 ```
 
-One scan is one page, one state, one moment — scan the pages that matter (Kontakt, Buchung, Checkout, Login) separately.
+One scan is one page, one state, one moment — add the pages that matter with `--pages "/kontakt,/buchung"` (or `--sitemap`); each runs in a fresh profile. Every page also reports security headers, first-party cookie attributes, mixed content and form targets.
+
+The other three tools need no browser:
+
+```bash
+npm run lint-origins -- ./client-site --own client.de --strict   # static: SDKs, origins, storage, server-side recipients, regions, env key names
+npm run gtm -- GTM-XXXX_export.json --md                        # GTM container export → tag table with triggers, Consent Mode, verdict
+npm run har -- recording.har --phase pre-consent                # client-recorded HAR → the scanner's JSON shape
+```
+
+For client delivery, any produced Markdown (report, Datenschutzerklärung, Impressum, VVT, TOMs) becomes one self-contained HTML file — system fonts, no external requests, print styles — and optionally a PDF:
+
+```bash
+npm run render -- datenschutz-audit-example.de-2026-09-24.md --pdf      # → .html + .pdf next to the input
+```
+
+[`examples/ci/dsgvo-gate.yml`](examples/ci/dsgvo-gate.yml) wires the linter (every PR) and the scanner (preview deployments, `--strict`) into GitHub Actions.
 
 Exit codes: `0` ok · `1` `--strict` violation · `2` usage error / Playwright missing · `3` page could not be loaded (network, DNS, proxy) — no verdict is printed, so a failed scan never reads as a pass. The accept phase prefers an explicit "Alle akzeptieren" button and never clicks a reject-equivalent such as "Nur notwendige akzeptieren".
 
@@ -68,13 +84,14 @@ Exit codes: `0` ok · `1` `--strict` violation · `2` usage error / Playwright m
 .claude-plugin/         plugin.json + marketplace.json  (Claude Code distribution)
 skills/dsgvo-audit/
   SKILL.md              workflow, deployment rules, report format
-  references/           checklist · recht (law, case law, fines) · services · architecture (data-flow trace) · patterns (gating)
-  assets/               Datenschutzerklärung + Impressum templates (German, modular)
-  scripts/              scan-origins.mjs (runtime scanner)
+  references/           checklist · recht (law, case law, fines) · law-watch (open points, re-check dates) · services · architecture (data-flow trace) · patterns (gating)
+  assets/               templates: Datenschutzerklärung (DE + EN), Impressum, cookie-banner texts, VVT (Art. 30), TOMs (Art. 32)
+  scripts/              scan-origins.mjs (runtime scanner) · lint-origins.mjs (static) · parse-gtm.mjs · parse-har.mjs · render-report.mjs (HTML/PDF) · lib/signatures.mjs
+examples/ci/            GitHub Actions example: lint on PRs, runtime scan with --strict on preview deployments
 agents/                 dsgvo-auditor subagent
 tests/                  fixtures + tests that run the skill's own commands
 evals/                  output evals (fixtures + expectations), trigger evals, how to run them
-scripts/                validate · package (.skill) · bump-version · grade-report (deterministic checks on audit output)
+scripts/                validate · package (.skill) · bump-version · grade-report (deterministic checks on audit output) · summarize-evals (results file from a workspace iteration)
 ```
 
 ## Versioning

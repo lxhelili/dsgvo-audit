@@ -44,6 +44,16 @@ const excerpt = (m) => (m ? `"${String(m).trim().slice(0, 80)}"` : 'no match');
 // Placeholders the templates use: [PLATZHALTER], [FIRMA, RECHTSFORM], [X TAGE], [E-MAIL] …
 const PLACEHOLDER = /\[PLATZHALTER\]|\[[A-ZÄÖÜ][A-ZÄÖÜ0-9 ,./()+\-–]{2,}\]/;
 const FORBIDDEN_CLAIMS = /abmahnsicher|100\s?%\s?(konform|DSGVO-konform|rechtssicher)|garantiert (konform|rechtssicher)|vollständig konform/i;
+// A negated or quoted mention („keine ‚100 % konform'-Siegel", „nie ‚abmahnsicher' nennen") is the skill doing its job, not a claim.
+function forbiddenClaim(text) {
+  const re = new RegExp(FORBIDDEN_CLAIMS.source, FORBIDDEN_CLAIMS.flags.includes('g') ? FORBIDDEN_CLAIMS.flags : FORBIDDEN_CLAIMS.flags + 'g');
+  for (const m of text.matchAll(re)) {
+    const before = text.slice(Math.max(0, m.index - 40), m.index);
+    if (/(kein|keine|keinen|nicht|nie|niemals|weder|„|"|‚|'|«|nennen wir|als)\s*[^\n]{0,25}$/i.test(before)) continue;
+    return m[0];
+  }
+  return null;
+}
 const ODR_LINK = /ec\.europa\.eu\/consumers\/odr/i;
 const RDG = /RDG/;
 
@@ -69,12 +79,16 @@ if (reportPath) {
   check('Report has the eight Phase-4 sections as headings, in order', inOrder, missing.length ? `missing/out of order: ${missing.join(', ')}` : `${headings.length} headings`);
 
   const summary = t.split(/^#{1,4}\s+/m).find((s) => /^(\d+[.)]?\s*)?management summary/i.test(s)) || '';
+  // the evidence level may sit in the report header (title block before section 1) instead of the summary bullets
+  const preamble = t.split(/^#{1,4}\s+(?:\d+[.)]?\s*)?management summary/im)[0] || '';
+  const evidenceScope = preamble.slice(-1500) + '\n' + summary;
   check('Management Summary carries an Ampel status', /[🔴🟠🟡🟢]/.test(summary), excerpt(summary.match(/[🔴🟠🟡🟢][^\n]{0,60}/)?.[0]));
   check('Management Summary states the evidence level (code / runtime scan / URL only / description only)',
-    /evidenz|runtime-?scan|nur (url|beschreibung)|code(\s?\+\s?|\s+und\s+)runtime|kein(e)? (runtime|laufzeit)|laufzeit-?scan|statische(r|n)? scan/i.test(summary),
-    excerpt(summary.match(/[^\n]*(evidenz|runtime|laufzeit|nur url|nur beschreibung)[^\n]*/i)?.[0]));
+    /evidenz|runtime-?scan|nur (url|beschreibung)|code(\s?\+\s?|\s+und\s+)runtime|kein(e)? (runtime|laufzeit)|laufzeit-?scan|statische(r|n)? scan/i.test(evidenceScope),
+    excerpt(evidenceScope.match(/[^\n]*(evidenz|runtime|laufzeit|nur url|nur beschreibung)[^\n]*/i)?.[0]));
 
-  const blocks = [...t.matchAll(/^#{2,4}\s+([🔴🟠])[^\n]*\n([\s\S]*?)(?=^#{1,4}\s|\n---|(?![\s\S]))/gm)];
+  // `u` flag: without it the character class matches UTF-16 code units, and 🟡/🟢 share a surrogate with 🔴/🟠
+  const blocks = [...t.matchAll(/^#{2,4}\s+([🔴🟠])[^\n]*\n([\s\S]*?)(?=^#{1,4}\s|\n---|(?![\s\S]))/gmu)];
   const critical = blocks.length;
   const incomplete = blocks.filter(([, , body]) => !(/befund/i.test(body) && /rechtsgrundlage/i.test(body) && /risiko/i.test(body) && /maßnahme/i.test(body) && /aufwand/i.test(body)));
   check(`Every 🔴/🟠 finding block has Befund · Rechtsgrundlage · Risiko · Maßnahme · Aufwand (${critical} blocks)`, critical > 0 && incomplete.length === 0,
@@ -84,7 +98,7 @@ if (reportPath) {
   check('Effort scale used (Aufwand: S/M/L)', critical === 0 || /aufwand:?\**\s*\**\s*[SML]\b/i.test(t), excerpt(t.match(/aufwand[^\n]{0,30}/i)?.[0]));
 
   check('Report ends with the RDG disclaimer', RDG.test(t.slice(-2500)) && /rechtsberatung/i.test(t.slice(-2500)), excerpt(t.slice(-2500).match(/[^\n]*RDG[^\n]*/)?.[0]));
-  check('Report makes no forbidden claim (abmahnsicher, 100 % konform, garantiert …)', !FORBIDDEN_CLAIMS.test(t), excerpt(t.match(FORBIDDEN_CLAIMS)?.[0]));
+  { const m = forbiddenClaim(t); check('Report makes no forbidden claim (abmahnsicher, 100 % konform, garantiert …)', !m, excerpt(m)); }
   check('Report has no leftover template placeholder', !PLACEHOLDER.test(t), excerpt(t.match(PLACEHOLDER)?.[0]));
   const addOdr = t.match(/os-plattform(-link)?[^\n]{0,80}(?<!nicht )(einfügen|ergänzen|hinzufügen|aufnehmen|verlinken)|(link|verlinkung)[^\n]{0,60}os-plattform[^\n]{0,60}(?<!nicht )(einfügen|ergänzen|hinzufügen|aufnehmen)|os-plattform[^\n]{0,80}(fehlt|muss verlinkt|ist pflicht)/i);
   check('Report does not recommend adding the OS-Plattform link', !addOdr, addOdr ? excerpt(addOdr[0]) : 'no "add the ODR link" wording');
@@ -102,7 +116,7 @@ if (dsePath) {
   check('DSE states retention periods concretely (not only "solange erforderlich")', /speicherdauer|löschung|aufbewahr/i.test(t) && /\d+\s?(tage|monate|jahre|wochen)/i.test(t), excerpt(t.match(/\d+\s?(tage|monate|jahre|wochen)/i)?.[0]));
   check('DSE carries a Stand date', /stand[^\n]{0,40}(\d{1,2}\.\s?\d{1,2}\.\s?\d{4}|\d{4}-\d{2}-\d{2}|(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)\s\d{4})/i.test(t), excerpt(t.match(/stand[^\n]{0,50}/i)?.[0]));
   check('DSE has no OS-Plattform link', !ODR_LINK.test(t), 'no ec.europa.eu/consumers/odr');
-  check('DSE makes no forbidden claim', !FORBIDDEN_CLAIMS.test(t), excerpt(t.match(FORBIDDEN_CLAIMS)?.[0]));
+  { const m = forbiddenClaim(t); check('DSE makes no forbidden claim', !m, excerpt(m)); }
 }
 
 // ---------------- Impressum ----------------
@@ -117,8 +131,8 @@ if (impressumPath) {
 
 // ---------------- eval-specific expectations ----------------
 const all = [reportPath, dsePath, impressumPath].filter(Boolean).map((p) => readFileSync(p, 'utf8')).join('\n\n');
-for (const re of expects) { const m = all.match(new RegExp(re, 'i')); check(`--expect /${re}/ matches`, !!m, excerpt(m?.[0])); }
-for (const re of expectNos) { const m = all.match(new RegExp(re, 'i')); check(`--expect-no /${re}/ does not match`, !m, excerpt(m?.[0])); }
+for (const re of expects) { const m = all.match(new RegExp(re, 'im')); check(`--expect /${re}/ matches`, !!m, excerpt(m?.[0])); }
+for (const re of expectNos) { const m = all.match(new RegExp(re, 'im')); check(`--expect-no /${re}/ does not match`, !m, excerpt(m?.[0])); }
 
 // ---------------- output ----------------
 for (const r of results) console.log(`  ${r.passed ? '✅' : '❌'} ${r.text}${r.passed ? '' : `\n     ↳ ${r.evidence}`}`);

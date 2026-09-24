@@ -7,6 +7,8 @@
 //   2. tests/fixtures/site-accept-order — "Nur notwendige akzeptieren" is listed BEFORE "Alle akzeptieren";
 //                                        the accept phase must still click the accept-all button
 //   3. unreachable URL                — exit code 3, no verdict, output never reads as a pass
+//   4. --pages                        — a second page (kontakt.html with a Formspree form) is scanned in a
+//                                        fresh context; header/cookie/form findings land in the verdict
 
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, unlinkSync, statSync } from 'node:fs';
@@ -69,6 +71,24 @@ try {
     check(/nur notwendige/i.test(r.phases['after-reject']?.clicked || ''), 'reject phase clicks "Nur notwendige akzeptieren"');
     check(/alle akzeptieren/i.test(r.phases['after-accept']?.clicked || ''), 'accept phase clicks "Alle akzeptieren", not the reject-equivalent');
     check((r.phases['after-accept']?.thirdPartyOrigins || []).some((o) => /hotjar/.test(o.origin)), 'after-accept inventory is complete (Hotjar present)');
+  }
+
+  // ---- 4. --pages: second page in fresh context, technical checks ----
+  {
+    const url = `${base}/site/index.html`;
+    console.log(`scanner against ${url} --pages /site/kontakt.html:`);
+    await scan(url, '--pages', '/site/kontakt.html');
+    const r = readOut();
+    const sub = r.pages?.[`${base}/site/kontakt.html`];
+    check(!!sub && sub.verdict, 'subpage scanned and has its own verdict');
+    check(sub?.verdict.thirdPartyBeforeConsent.length === 0, 'subpage has no third-party load before consent (fresh context, no carry-over)');
+    check((sub?.phases['after-accept']?.thirdPartyOrigins || []).some((o) => /hotjar/.test(o.origin)), 'subpage accept phase ran');
+    check(sub?.verdict.thirdPartyFormTargets.some((a) => /formspree\.io/.test(a)), 'third-party form target (Formspree) reported');
+    check(sub?.forms?.[0]?.privacyNoteNearby === false, 'missing privacy note at the form reported');
+    check(r.verdict.headerFindings.some((h) => /CSP/.test(h)), 'missing CSP on the main page reported');
+    check(r.verdict.cookieAttributeIssues.some((c) => /^session@/.test(c) && /httpOnly/.test(c)), 'session cookie without httpOnly reported');
+    check(r.verdict.mixedContent.length === 0, 'no mixed content on an http fixture');
+    check(r.pflichtseiten['/impressum'] === 200 && !sub?.pflichtseiten?.impressumLink, 'Pflichtseiten checked on the main page only');
   }
 
   // ---- 3. unreachable URL → exit 3, no verdict ----

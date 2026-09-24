@@ -44,7 +44,7 @@ Passende Tabelle in `references/services.md` wählen, Spalten beibehalten:
 | <Dienst> | <Consent § 25: ja / nein / streitig> | <DSGVO-Basis> | <Drittland / Region> | <🔴🟠🟡🟢 + Begründung in einem Satz + sicherere Alternative> |
 ```
 
-Origin-Regex in die `SIGNATURES`-Liste in `scripts/scan-origins.mjs` eintragen, damit der Scanner den Dienst benennt, und — falls ein Dienst ein eigenes DSE-Modul braucht — ein Modul in `assets/datenschutzerklaerung-template.md`.
+Origin-Regex in `scripts/lib/signatures.mjs` eintragen, damit Scanner, statischer Linter und beide Parser den Dienst benennen, und — falls ein Dienst ein eigenes DSE-Modul braucht — ein Modul in `assets/datenschutzerklaerung-template.md`.
 
 ## Checkliste Rechtsupdate
 
@@ -52,6 +52,7 @@ Origin-Regex in die `SIGNATURES`-Liste in `scripts/scan-origins.mjs` eintragen, 
 2. Ändern sich Bewertungen, im selben PR `checklist.md` und/oder `services.md` anpassen.
 3. Rechtsstand bumpen: `npm run version:bump -- <x.y.z> --law-stand YYYY-MM` (minor für neue Inhalte, patch für Korrekturen, major wenn Bewertungen oder die Berichtsstruktur sich ändern).
 4. Zeile unter `[Unreleased]` in `CHANGELOG.md`.
+5. Zeile in `references/law-watch.md` aktualisieren (Stand, Prüfen-bis-Datum, Quelle) — `npm run validate` warnt, wenn ein Prüfdatum überschritten ist.
 
 ## Release (Maintainer)
 

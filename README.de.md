@@ -13,7 +13,7 @@ Gebaut für Agenturen und Freelancer, die Kundenseiten in Deutschland ausliefern
 1. **Evidenz statt Raten.** Scannt die Codebasis (Dependencies, Quellcode, Config, Env-Schlüsselnamen), lässt einen **Playwright-Runtime-Scanner** gegen die Live-Seite laufen, der jeden Drittanbieter-Origin, jedes Cookie und jeden Storage-Key *vor* jeder Consent-Interaktion, nach „Ablehnen“ und nach „Akzeptieren“ aufzeichnet, und verfolgt personenbezogene Daten Hop für Hop: Browser → Edge/Middleware → API/Server Actions → Datenbank → Auftragsverarbeiter (Mail, KI-APIs, CRM, Payment) → Logs, Monitoring, CI.
 2. **Prüft** gegen einen Katalog mit über 100 Punkten: Impressum, Art.-13-Informationspflichten, § 25 TDDDG, Auftragsverarbeiter und Drittlandtransfer, Backend-Datenfluss, Formulare, KI-Funktionen (Art. 22 DSGVO, Art. 50 KI-VO), Art.-9-Gesundheitsdaten für Praxen und Pflegedienste, organisatorische Pflichten, Security-Header.
 3. **Berichtet** auf Deutsch mit 🔴/🟠/🟡/🟢/⚪️-Status, Datenfluss-Tabelle, Befundblock (Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand) und priorisiertem Maßnahmenplan.
-4. **Behebt** auf Wunsch: modulare Vorlagen für Datenschutzerklärung und Impressum, Consent-Gating-Muster (framework-unabhängige Prinzipien + Beispiele für Plain HTML, Next.js, Angular, Astro, WordPress), dann Re-Audit der eigenen Ausgabe.
+4. **Behebt** auf Wunsch: modulare Vorlagen für Datenschutzerklärung (DE + EN), Impressum, Cookie-Banner-Texte, VVT (Art. 30) und TOMs (Art. 32), Consent-Gating-Muster (framework-unabhängige Prinzipien + Beispiele für Plain HTML, Next.js, Angular, Astro, WordPress), dann Re-Audit der eigenen Ausgabe.
 
 Bewertungen für rund 50 gängige Dienste (Google Fonts/Analytics/Maps/reCAPTCHA, Meta Pixel, YouTube, Hotjar, Matomo, Plausible, Vercel, Supabase, Firebase, Resend, Sentry, Stripe, Calendly, OpenAI/Anthropic/Gemini-APIs, Turnstile, Friendly Captcha, …) stehen in [`references/services.md`](skills/dsgvo-audit/references/services.md).
 
@@ -58,7 +58,17 @@ npm run scan -- https://example.de --strict               # Exit 1, wenn vor Con
 npm run scan -- https://example.de --reject "Nur notwendige" --no-accept
 ```
 
-Ein Scan sieht eine Seite, einen Zustand, einen Zeitpunkt — die relevanten Unterseiten (Kontakt, Buchung, Checkout, Login) separat scannen.
+Ein Scan sieht eine Seite, einen Zustand, einen Zeitpunkt — die relevanten Unterseiten mit `--pages "/kontakt,/buchung"` (oder `--sitemap`) anhängen; jede läuft in einem frischen Profil. Jede Seite meldet außerdem Security-Header, Attribute der First-Party-Cookies, Mixed Content und Formularziele.
+
+Die drei anderen Werkzeuge brauchen keinen Browser:
+
+```bash
+npm run lint-origins -- ./kundenseite --own kunde.de --strict   # statisch: SDKs, Origins, Endgerätzugriff, serverseitige Empfänger, Regionen, Env-Key-Namen
+npm run gtm -- GTM-XXXX_export.json --md                        # GTM-Container-Export → Tag-Tabelle mit Triggern, Consent Mode, Befund
+npm run har -- aufzeichnung.har --phase pre-consent             # vom Kunden aufgezeichnete HAR → JSON-Form des Scanners
+```
+
+[`examples/ci/dsgvo-gate.yml`](examples/ci/dsgvo-gate.yml) verdrahtet Linter (jeder PR) und Scanner (Preview-Deployments, `--strict`) in GitHub Actions.
 
 Exit-Codes: `0` ok · `1` `--strict`-Verstoß · `2` Bedienfehler / Playwright fehlt · `3` Seite konnte nicht geladen werden (Netzwerk, DNS, Proxy) — es wird kein Befund ausgegeben, ein fehlgeschlagener Scan liest sich also nie als „sauber“. Die Akzeptieren-Phase bevorzugt einen expliziten „Alle akzeptieren“-Button und klickt nie eine Ablehnen-Variante wie „Nur notwendige akzeptieren“.
 
@@ -68,9 +78,10 @@ Exit-Codes: `0` ok · `1` `--strict`-Verstoß · `2` Bedienfehler / Playwright f
 .claude-plugin/         plugin.json + marketplace.json  (Verteilung über Claude Code)
 skills/dsgvo-audit/
   SKILL.md              Workflow, Deployment-Regeln, Berichtsformat
-  references/           checklist · recht (Normen, Urteile, Bußgelder) · services · architecture (Datenfluss) · patterns (Gating)
-  assets/               Vorlagen Datenschutzerklärung + Impressum (deutsch, modular)
-  scripts/              scan-origins.mjs (Runtime-Scanner)
+  references/           checklist · recht (Normen, Urteile, Bußgelder) · law-watch (offene Punkte, Prüfdaten) · services · architecture (Datenfluss) · patterns (Gating)
+  assets/               Vorlagen: Datenschutzerklärung (DE + EN), Impressum, Cookie-Banner-Texte, VVT (Art. 30), TOMs (Art. 32)
+  scripts/              scan-origins.mjs (Runtime-Scanner) · lint-origins.mjs (statisch) · parse-gtm.mjs · parse-har.mjs · render-report.mjs (HTML/PDF) · lib/signatures.mjs
+examples/ci/            GitHub-Actions-Beispiel: Lint bei PRs, Runtime-Scan mit --strict auf Preview-Deployments
 agents/                 Subagent dsgvo-auditor
 tests/                  Fixtures + Tests, die die Befehle des Skills selbst ausführen
 evals/                  Output-Evals (Fixtures + Erwartungen), Trigger-Evals, Anleitung

@@ -39,14 +39,14 @@ What happens, per skill-creator's process:
 3. Run the deterministic grader on the produced files and merge — it is the cheap half of the grading:
    ```bash
    node scripts/grade-report.mjs --report evals/workspace/iteration-1/nextjs-ga-fonts-audit/with_skill/outputs/datenschutz-audit-*.md --json grading-structure.json
-   node scripts/grade-report.mjs --dse …/datenschutzerklaerung.md --impressum …/impressum.md --expect-no "Google Fonts|Google Analytics|YouTube|Newsletter"
+   node scripts/grade-report.mjs --dse …/datenschutzerklaerung.md --impressum …/impressum.md --expect-no "^#+ .*(Google Fonts|Google Analytics|YouTube|Newsletter)"
    ```
-4. `python -m scripts.aggregate_benchmark evals/workspace/iteration-1 --skill-name dsgvo-audit` → `benchmark.md` with pass rate, time and tokens per configuration, with-skill vs baseline.
+4. `npm run evals:summary -- evals/workspace/iteration-1 --out evals/results/<version>.md` → the results file: pass rates per eval and configuration with the delta, the deterministic grader's numbers, time and tokens, every failed expectation with evidence, the graders' unverified claims and eval-design feedback, and an "Analyst notes" section to fill in by hand. (skill-creator's `aggregate_benchmark.py` works too if the runs are laid out as `eval-N/<config>/run-M/`.) Put `timing.json` (`executor_duration_seconds`, `total_tokens` from the subagent notification) next to each `grading.json` so the cost table fills.
 5. Read the analyst pass: which expectations pass regardless of the skill (non-discriminating — rewrite them), which are flaky (run again before trusting them), where the skill costs tokens without buying accuracy.
 
 When the change is to an existing version, the baseline is the *previous* skill, not "no skill": snapshot it first (`cp -r skills/dsgvo-audit evals/workspace/skill-snapshot/`) and point the baseline runs at the snapshot. That answers the question that matters for a release: did this edit make audits better or worse?
 
-`evals/workspace/` is git-ignored. Commit `benchmark.md` of a release iteration into `evals/results/<version>.md` if you want the history in the repo; the raw transcripts stay out.
+`evals/workspace/` is git-ignored. The summary of a release iteration is committed as `evals/results/<version>.md` (pass rates per eval and configuration, the deterministic grader's result on the produced files, and the analyst notes: non-discriminating expectations, flaky ones, observed failures); the raw transcripts and outputs stay out. `results/` is the only place where "the skill audits well" is a measured claim rather than an assumption — read the latest file before changing `SKILL.md` or `references/`.
 
 ## Running the trigger evals
 

@@ -22,6 +22,8 @@ jobs:
         run: npm run test:phase1
       - name: Deterministic grader accepts golden fixtures, rejects broken report
         run: npm run test:grader
+      - name: Static lint, GTM parser and HAR parser against fixtures
+        run: npm run test:tools
       - name: Runtime scanner end-to-end
         run: npm run test:scanner
       - name: Package builds

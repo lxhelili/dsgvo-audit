@@ -10,4 +10,7 @@ scan-*.json
 .tokensave
 evals/workspace/
 dist-scan-test.json
+dist-tools-test.json
+dist-render-test.*
+dist-grade-test.md
 .remember/

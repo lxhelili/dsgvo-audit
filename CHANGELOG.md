@@ -6,6 +6,40 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.1.0] – 2026-09-24
+
+### Added
+
+- `scripts/lint-origins.mjs` — the Phase-1a grep block as one repeatable command: SDK classification from `package.json`, third-party origins in load contexts (script/link/iframe/preconnect/CSS), device storage (§ 25 TDDDG), server-side recipients, config files, function regions, env key names (never values). JSON output, `--own <domain>`, `--strict` exit 1 for fonts/CDN assets/reCAPTCHA loaded from the vendor and for trackers with no consent gate in the same file.
+- `scripts/parse-gtm.mjs` — GTM container export → per-tag table: type (incl. community templates), firing/blocking triggers (built-in All Pages/Initialization/Consent Initialization resolved), Consent-Mode settings, origins found inside Custom HTML, verdict (🔴 fires on All Pages without consent condition · 🟡 consent-named trigger or NEEDS_CONSENT · ⚪️ paused). `--md` prints the table for the report.
+- `scripts/parse-har.mjs` — client-recorded HAR → the scanner's JSON shape (third-party origins, Set-Cookie, cookies with attributes, security headers, mixed content); `--phase` records which banner state the client captured; says that storage keys are not in a HAR.
+- `scripts/lib/signatures.mjs` — the one origin list shared by scanner, linter and both parsers; plus header/cookie-attribute checks. New signatures: Doctolib, jameda, samedi, Cal.com, hosted form services (Formspree/Tally/Typeform/Google Forms).
+- Scanner: `--pages "/kontakt,/buchung"` and `--sitemap` (`--max-pages`, default 10) scan further pages, each in a fresh browser context so consent never carries over; results under `pages`, `--strict` covers all of them. Every page now also reports security headers (HSTS, CSP, Referrer-Policy, X-Content-Type-Options), first-party cookie attributes (secure/sameSite/httpOnly), mixed content, and forms with their action target and whether a Datenschutzhinweis is present (checklist 6 and 10).
+- `examples/ci/dsgvo-gate.yml` — GitHub Actions example: static lint on every PR, runtime scan with `--strict` on preview deployments (`deployment_status`) or by hand (`workflow_dispatch`), JSON as artifact.
+- `references/law-watch.md` — the open legal points (DPF appeal, Digital Omnibus, EinwV/PIMS, KI-VO Art. 50, DSK guidance, Fonts case law, Art. 82 damages, captcha positions, hosting regions, LLM endpoints, BFSG) with current stand, what would change where, a re-check date and the source. `npm run validate` fails a row without a date and warns when a date has passed.
+- Service rows: Doctolib / jameda / samedi / Timify (link instead of widget; controller vs processor role), Microsoft 365 / Google Workspace as the mailbox every form ends in (DPA, EU residency, Art. 9 rule).
+- `tests/tools.test.mjs` (linter, GTM parser, HAR parser against fixtures) and a fourth scanner case (`--pages`, headers, cookie attributes, form target); both in `npm test` and CI.
+
+- `scripts/render-report.mjs` — Markdown → one self-contained HTML file for client delivery (system fonts, no external requests, print styles, TOC), `--pdf` via Playwright when installed (exit 4 and HTML still written otherwise). Covers report, DSE, Impressum, VVT and TOMs; `npm run render`.
+- `assets/vvt-template.md` — Verzeichnis von Verarbeitungstätigkeiten (Art. 30) with the eleven typical website activities (hosting/logs, contact, booking, analytics, newsletter, applications, account, payment, AI feature, monitoring, consent log), each with the lit. a–g fields; one row of the audit's Datenfluss-Übersicht = one activity.
+- `assets/toms-template.md` — TOMs (Art. 32) along Vertraulichkeit / Integrität / Verfügbarkeit / Überprüfungsverfahren; each measure marked (S) proven by scan/lint/code with the evidence location, or (A) client statement.
+- `assets/cookie-banner-texte.md` — banner texts (first layer, settings layer with category tables `necessary/statistics/marketing/external` matching `patterns.md`, two-click placeholder, footer/withdrawal note, English variant) and the rule checklist with norms; "no banner when nothing needs consent".
+- `assets/privacy-policy-template.en.md` — English mirror of the DSE template, same module numbers, terminology table, "German prevails" clause (Art. 12(1) for multilingual sites).
+- `evals/results/1.1.0-iteration-1.md` — first measured run of the five output evals: **46/47 with the skill vs. 35/47 without** (LLM grader, one run each), deterministic grader 57/60 vs. 23/30 on the files that apply; cost ≈ 1.4–1.9× tokens. Five skill defects found and fixed (see Fixed). `scripts/summarize-evals.mjs` (`npm run evals:summary`) builds the results file from a workspace iteration.
+- `evals/evals.json`: eval 3 expectation 6 corrected (Calendly script is at the end of `<body>`, not in `<head>`); eval 4 gained a "Pflicht zur Bereitstellung" expectation; eval 5 gained a § 203 StGB / § 62a StBerG expectation — both gaps named by the graders.
+
+### Fixed
+
+- `lint-origins.mjs --strict` no longer fails on cookieless EU analytics (Plausible, Umami, Pirsch, Fathom) loaded without a consent gate — `services.md` rates them 🟢 on Art. 6(1)(f), so the lint now prints an ℹ️ note (runtime scan must confirm no cookie/storage; DSE module + DPA; first-party proxy recommended) instead of contradicting the skill's own service table. Found by the first eval run.
+- `grade-report.mjs`: the 🔴/🟠 block regex now uses the `u` flag (without it 🟡/🟢 headings matched via a shared UTF-16 surrogate and were graded as incomplete critical blocks); a negated or quoted forbidden phrase („keine ‚100 % konform'-Siegel") no longer counts as a claim; the evidence-level statement may sit in the report header above section 1; `--expect`/`--expect-no` are multiline so `^#+ ` anchors work. Eval 4's `--expect-no` is heading-anchored, so "no connection to Google Fonts" in a fonts section no longer fails it. All found by the first eval run.
+- `impressum-template.md` carries a `Stand: [DATUM]` line — the eval-4 run delivered an Impressum without a date because the template had none.
+- `render-report.mjs` neutralises `javascript:`/`data:` link targets (scheme allowlist, `rel="noopener noreferrer"`) and emits a `default-src 'none'` CSP meta tag.
+
+### Changed
+
+- SKILL.md Phase 4/5 point to the renderer and the four new templates; Phase 5 ends with "re-run Phase 3, the scanner and the grader on your own output".
+- SKILL.md Phase 1 references the four scripts at the step where each is used; Files list and Phase 3 point to `law-watch.md`.
+
 ## [1.0.0] – 2026-09-24
 
 Initial release. Law stand: 2026-09.
@@ -35,5 +69,6 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lxhelili/dsgvo-audit/releases/tag/v1.0.0
