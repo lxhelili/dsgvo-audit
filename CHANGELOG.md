@@ -6,6 +6,8 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.2.1] – 2026-09-24
+
 ### Changed
 
 - SKILL.md, after the 1.2.0 eval run (`evals/results/1.2.0-iteration-2.md`, 49/51 vs. 48/51 against 1.1.0): the Management Summary states what the evidence did *not* cover (unscanned subpages — one scan is one page —, GTM, server side); the evidence-level definition names the Google Fonts case (`<link>` in code is observed, the request is not); section 5 adds the recipients no scan can see (hoster, mailbox, DB host, intake); the Impressum takes no Kammer, Aufsichtsbehörde, register court or title inferred from location or trade. `list-processors.mjs --md` says the same about hoster/mailbox in its footnote.
@@ -94,7 +96,8 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lxhelili/dsgvo-audit/releases/tag/v1.0.0
