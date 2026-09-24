@@ -6,6 +6,15 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+### Changed
+
+- SKILL.md, after the 1.2.0 eval run (`evals/results/1.2.0-iteration-2.md`, 49/51 vs. 48/51 against 1.1.0): the Management Summary states what the evidence did *not* cover (unscanned subpages — one scan is one page —, GTM, server side); the evidence-level definition names the Google Fonts case (`<link>` in code is observed, the request is not); section 5 adds the recipients no scan can see (hoster, mailbox, DB host, intake); the Impressum takes no Kammer, Aufsichtsbehörde, register court or title inferred from location or trade. `list-processors.mjs --md` says the same about hoster/mailbox in its footnote.
+- `evals.json`: eval 1's evidence expectation names Google Fonts as well as GA4; eval 4 gained "nothing filled in that INTAKE.md or the code does not state".
+
+### Fixed
+
+- `grade-report.mjs` required Art. 7 Abs. 3 in every Datenschutzerklärung; it is now required only when the DSE names consent-based processing (Art. 6(1)(a), Art. 9(2)(a), § 25(1) TDDDG). A consent-free site (cookieless analytics on lit. f) failed the check in the eval run.
+
 ## [1.2.0] – 2026-09-24
 
 ### Added

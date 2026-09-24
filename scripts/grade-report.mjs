@@ -123,7 +123,12 @@ if (dsePath) {
   check('DSE has no leftover template placeholder', !PLACEHOLDER.test(t), excerpt(t.match(PLACEHOLDER)?.[0]));
   check('DSE names the Verantwortlicher with an e-mail address', /verantwortlich/i.test(t) && /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t), excerpt(t.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0]));
   check('DSE states Zweck and Rechtsgrundlage per processing (Art. 6 Abs. 1 lit. …)', (t.match(/Art\.\s?6\s?Abs\.\s?1\s?lit\.\s?[abcf]/g) || []).length >= 2, `${(t.match(/Art\.\s?6\s?Abs\.\s?1\s?lit\.\s?[abcf]/g) || []).length} legal-basis citations`);
-  check('DSE lists the Betroffenenrechte (Art. 15, 16, 17, 18, 20) and the withdrawal right (Art. 7 Abs. 3)', ['15', '16', '17', '18', '20'].every((n) => new RegExp(`Art\\.\\s?${n}\\b`).test(t)) && /Art\.\s?7\s?Abs\.\s?3/.test(t), 'article numbers present');
+  // the withdrawal right only matters where something rests on consent — a consent-free site (cookieless analytics on lit. f) need not list it
+  const consentBased = /Art\.\s?6\s?Abs\.\s?1\s?(S\.\s?1\s?)?lit\.\s?a|Art\.\s?9\s?Abs\.\s?2\s?lit\.\s?a|§\s?25\s?Abs\.\s?1\s?TDDDG/.test(t);
+  const rights = ['15', '16', '17', '18', '20'].filter((n) => !new RegExp(`Art\\.\\s?${n}\\b`).test(t));
+  const withdrawal = !consentBased || /Art\.\s?7\s?Abs\.\s?3/.test(t);
+  check('DSE lists the Betroffenenrechte (Art. 15, 16, 17, 18, 20) and, where anything rests on consent, the withdrawal right (Art. 7 Abs. 3)', !rights.length && withdrawal,
+    rights.length ? `missing: Art. ${rights.join(', ')}` : !withdrawal ? 'consent-based processing but no Art. 7 Abs. 3' : consentBased ? 'all present' : 'all present (no consent-based processing, Art. 7 Abs. 3 not required)');
   check('DSE highlights the Art. 21 Widerspruchsrecht (blockquote or bold)', /^>\s*[^\n]*(Art\.\s?21|Widerspruchsrecht)|\*\*[^\n]*(Art\.\s?21|Widerspruchsrecht)[^\n]*\*\*/m.test(t), excerpt(t.match(/^>[^\n]*Widerspruch[^\n]*/m)?.[0]));
   check('DSE names the Beschwerderecht and a supervisory authority', /Art\.\s?77|Beschwerderecht/.test(t) && /Aufsichtsbehörde|Landesbeauftragte|Datenschutzbeauftragte(r)? (des Landes|für)|LDI|BfDI|LfDI|BayLDA/i.test(t), excerpt(t.match(/[^\n]*(Landesbeauftragte|LDI|LfDI|BayLDA|BfDI)[^\n]*/)?.[0]));
   check('DSE states retention periods concretely (not only "solange erforderlich")', /speicherdauer|löschung|aufbewahr/i.test(t) && /\d+\s?(tage|monate|jahre|wochen)/i.test(t), excerpt(t.match(/\d+\s?(tage|monate|jahre|wochen)/i)?.[0]));

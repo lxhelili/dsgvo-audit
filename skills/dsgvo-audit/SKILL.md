@@ -126,11 +126,11 @@ For third-party services use `references/services.md` (legal basis, consent, tra
 
 Write `datenschutz-audit-<domain>-<YYYY-MM-DD>.md` (for client delivery: `scripts/render-report.mjs` → HTML, `--pdf` → PDF) with exactly this structure:
 
-1. **Management Summary** — max 5 bullets, Ampel status, top 3 risks in plain German, one sentence on evidence level (code + runtime scan / URL only / description only)
+1. **Management Summary** — max 5 bullets, Ampel status, top 3 risks in plain German, one sentence on evidence level (code + runtime scan / URL only / description only) and what it did not cover (subpages not scanned — one scan is one page —, GTM container, server side, a missing live URL)
 2. **Kritische und hohe Befunde** — one block per finding (format below)
 3. **Datenfluss-Übersicht** — table: Datum | Quelle | Verarbeitung | Empfänger | Region | Rechtsgrundlage | Vertrag | Speicherdauer (from `architecture.md`), followed by `### Evidenzverzeichnis` (output of `build-evidence.mjs` plus your own entries) and one line naming the sources and their dates
 4. **Vollständige Prüftabelle** — every checklist item with status
-5. **Drittanbieter & Auftragsverarbeiter** — Dienst | Zweck | Daten | Rechtsgrundlage | AVV | Drittland + Mechanismus | Consent nötig? | Evidenz — start from `list-processors.mjs --md` (role, contract, region, the AVVs to request, Art. 28(3) contents), add Zweck/Daten/Rechtsgrundlage; its role/contract/region columns are a generic mapping, verify them per provider. Whether an AVV is signed stays ⚪️ until the client confirms it
+5. **Drittanbieter & Auftragsverarbeiter** — Dienst | Zweck | Daten | Rechtsgrundlage | AVV | Drittland + Mechanismus | Consent nötig? | Evidenz — start from `list-processors.mjs --md` (role, contract, region, the AVVs to request, Art. 28(3) contents), add Zweck/Daten/Rechtsgrundlage, and add the recipients no scan can see — hoster, mailbox provider, database host, anything from the Datenfluss-Übersicht or the intake; its role/contract/region columns are a generic mapping, verify them per provider. Whether an AVV is signed stays ⚪️ until the client confirms it
 6. **Maßnahmenplan** — Sofort / Kurzfristig / Mittelfristig, each with owner and Aufwand
 7. **Offene Fragen an den Mandanten**
 8. **Rechtlicher Hinweis** (RDG)
@@ -154,13 +154,13 @@ Aufwand scale: **S** < 2 h · **M** ≤ 1 Tag · **L** > 1 Tag or needs a client
 
 Evidence level per finding — the claim in the Befund, not the tool, decides:
 - **beobachtet** — the evidence shows exactly what the Befund says: the request was seen before consent (scan/HAR), the code line *is* the defect (`console.log(body)`).
-- **abgeleitet** — the Befund goes one step beyond the evidence: "GA lädt vor Consent" from code without a gate but no runtime scan; a GTM trigger read from the export. Say what would confirm it.
+- **abgeleitet** — the Befund goes one step beyond the evidence: "GA lädt vor Consent" or "Google Fonts werden zur Laufzeit geladen" from code without a runtime scan — a `<link>` in the code is observed, the request is not; a GTM trigger read from the export. Say what would confirm it.
 - **Mandantenangabe** — rests on what the client said (AVV signed, retention, headcount). Never upgrade it to beobachtet.
 
 ### Phase 5 — Remediation (only when asked to fix, not just audit)
 
 - **Datenschutzerklärung** from `assets/datenschutzerklaerung-template.md`: delete every module for a service the evidence doesn't show, fill every `[PLATZHALTER]`. Never leave a placeholder in a delivered file — list unfilled ones at the top of your message instead.
-- **Impressum** from `assets/impressum-template.md`.
+- **Impressum** from `assets/impressum-template.md`. Only what the client or a register states goes into the file — never a Kammer, Aufsichtsbehörde, register court or title inferred from the location or trade; an unknown mandatory item goes into the open questions, not into the text.
 - **English version** for multilingual sites from `assets/privacy-policy-template.en.md` — same module numbers as the German template, so delete the same modules in both; the terminology table at its top keeps "processor / legitimate interest / withdrawal" consistent; section 21 says German prevails.
 - **Consent gating** per `references/patterns.md`: gate the *load*, not the *use*; nothing non-essential leaves the browser before consent; verify with the scanner afterwards.
 - **Cookie banner**: texts and category tables from `assets/cookie-banner-texte.md` (first layer, settings layer, two-click placeholder, footer link, English variant) — only the categories and services the "after accept" scan shows; no banner at all when nothing needs consent. Rules: no pre-ticked boxes; "Ablehnen" on the first layer, as prominent and as few clicks as "Akzeptieren"; granular purposes; withdrawal as easy as consent (Art. 7(3)) via a persistent link; links to DSE and Impressum; no nag loops or dark patterns; no cookie wall for essential content; the CMP itself hosted first-party or in the EU.

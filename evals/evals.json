@@ -24,7 +24,9 @@
         "The hidden utm_source field forwarded in the mail is mentioned as marketing data that the DSE must cover",
         "The Management Summary states the evidence level as 'code only / no runtime scan / no live URL' or equivalent, and the report does not claim to know what the CMP does at runtime",
         "The report never uses the words 'abmahnsicher' or '100 % konform' and ends with the RDG disclaimer from references/recht.md",
-        "No Datenschutzerklärung is generated (the user asked for an audit only)"
+        "No Datenschutzerklärung is generated (the user asked for an audit only)",
+        "Every 🔴/🟠 finding carries an evidence line with an ID (E-xx) listed in an Evidenzverzeichnis and a level (beobachtet / abgeleitet / Mandantenangabe); because there is no runtime scan, the findings about runtime behaviour — GA4 loads before consent, Google Fonts are requested from Google — are marked abgeleitet (inferred from code), not beobachtet",
+        "Section 5 assigns each recipient a role: Resend, Sentry and Vercel as Auftragsverarbeiter (Art. 28) with the AVV/DPA status left open (⚪️ / question to the client, not assumed signed); Google Fonts as a self-hosting case, not as a service needing an AVV"
       ],
       "grader_args": [
         "--expect",
@@ -98,7 +100,8 @@
         "The Art. 21 Widerspruchsrecht is visually highlighted (blockquote/bold) and the Beschwerderecht names the LDI NRW as the supervisory authority for a Solingen company",
         "The Impressum contains the HRB number, Amtsgericht Wuppertal, USt-IdNr., Vertretungsberechtigter and no OS-Plattform link; the § 36 VSBG sentence is present or its omission is justified by ≤ 10 employees",
         "The Datenschutzerklärung contains the 'Pflicht zur Bereitstellung' statement (Art. 13(2)(e): which fields are required for the contact form and what happens without them)",
-        "Both files carry a Stand date and the RDG note is delivered with them"
+        "Both files carry a Stand date and the RDG note is delivered with them",
+        "Nothing is filled into the Impressum or the Datenschutzerklärung that neither INTAKE.md nor the code states — in particular no Handwerkskammer, Berufsbezeichnung or Aufsichtsbehörde for the trade inferred from the location; missing mandatory items are asked for instead"
       ],
       "grader_args": [
         "--expect-no",
