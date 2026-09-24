@@ -15,6 +15,7 @@
 **Risiko:** Bußgeld § 28 TDDDG, Abmahnung, Schadensersatz (Kontrollverlust, BGH VI ZR 10/24).
 **Maßnahme:** Script erst nach Consent rendern (Prinzip 1, `patterns.md`); Consent Mode v2 zusätzlich.
 **Aufwand:** S
+**Evidenz:** E-01, E-04 · abgeleitet (Code ohne Consent-Gate; Laufzeitverhalten nicht beobachtet)
 
 ### 🔴 K-02 Google Fonts werden zur Laufzeit von Google geladen
 **Befund:** `app/layout.tsx:9–10` `preconnect` + `<link href="https://fonts.googleapis.com/css2?family=Inter">`.
@@ -22,6 +23,7 @@
 **Risiko:** Automatisiert erkennbares Abmahnmuster; Schadensersatz.
 **Maßnahme:** `next/font/google` (Build-time) oder `.woff2` im Repo; `preconnect` entfernen; CSP `font-src 'self'`.
 **Aufwand:** S
+**Evidenz:** E-02 · abgeleitet (`<link>` im Code; Request zur Laufzeit nicht beobachtet)
 
 ### 🟠 H-01 Formular-Body in Logs und Sentry
 **Befund:** `app/api/contact/route.ts:9` `console.log('contact request', body)`; `:22` `Sentry.captureException(e, { extra: { body } })`.
@@ -29,12 +31,25 @@
 **Risiko:** PII in Vercel-Logs (US-Region iad1) und bei Sentry; Löschkonzept greift dort nicht.
 **Maßnahme:** Logging auf Metadaten reduzieren; `extra.body` entfernen; Sentry EU-DSN + `sendDefaultPii: false`.
 **Aufwand:** S
+**Evidenz:** E-03, E-05 · beobachtet (die Codezeilen sind der Befund)
 
 ## 3. Datenfluss-Übersicht
 
 | Datum | Quelle | Verarbeitung | Empfänger | Region | Rechtsgrundlage | Vertrag | Speicherdauer |
 |---|---|---|---|---|---|---|---|
 | Name, E-Mail, Telefon, Nachricht, utm_source | `/kontakt` | Route Handler `POST /api/contact` | Resend (Mail), Sentry (Fehler), Vercel Logs | iad1 (US) / US / US | Art. 6 Abs. 1 lit. b | Resend ⚪️, Sentry ⚪️, Vercel ⚪️ | ⚪️ unbekannt |
+
+### Evidenzverzeichnis
+
+| ID | Quelle | Dienst | Beobachtung | Fundstelle |
+|---|---|---|---|---|
+| E-01 | Code-Scan | Google Tag Manager | www.googletagmanager.com im Quellcode (Ladekontext), kein Consent-Gate in der Datei | `app/layout.tsx:12` |
+| E-02 | Code-Scan | Google Fonts | fonts.googleapis.com im Quellcode (Ladekontext), kein Consent-Gate in der Datei | `app/layout.tsx:9` |
+| E-03 | Code-Scan | sentry | serverseitiger Empfänger „sentry“ | `app/api/contact/route.ts:22` |
+| E-04 | Code-Scan | Umgebungsvariablen | Schlüsselnamen: NEXT_PUBLIC_GA_ID (Werte nicht gelesen) | `.env*` |
+| E-05 | Code | Logging | `console.log('contact request', body)` | `app/api/contact/route.ts:9` |
+
+Quellen: Code-Scan beispiel-agentur (2026-09-24). Kein Runtime-Scan — Aussagen zum Laufzeitverhalten sind „abgeleitet“.
 
 ## 4. Vollständige Prüftabelle
 
@@ -46,10 +61,10 @@
 
 ## 5. Drittanbieter & Auftragsverarbeiter
 
-| Dienst | Zweck | Daten | Rechtsgrundlage | AVV | Drittland + Mechanismus | Consent nötig? |
-|---|---|---|---|---|---|---|
-| Google Analytics 4 | Reichweitenmessung | IP, Client-ID, Events | Art. 6 Abs. 1 lit. a | ⚪️ | US — DPF-Status der Entität prüfen | ja |
-| Resend | Transaktionsmail | Formularinhalt | Art. 6 Abs. 1 lit. b | ⚪️ | US — DPA + DPF/SCC prüfen | nein |
+| Dienst | Zweck | Daten | Rechtsgrundlage | AVV | Drittland + Mechanismus | Consent nötig? | Evidenz |
+|---|---|---|---|---|---|---|---|
+| Google Analytics 4 | Reichweitenmessung | IP, Client-ID, Events | Art. 6 Abs. 1 lit. a | ⚪️ Mandant | US — DPF-Status der Entität prüfen | ja | E-01 |
+| Resend | Transaktionsmail | Formularinhalt | Art. 6 Abs. 1 lit. b | ⚪️ Mandant | US — DPA + DPF/SCC prüfen | nein | — (Datenfluss) |
 
 ## 6. Maßnahmenplan
 

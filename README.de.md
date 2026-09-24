@@ -12,7 +12,7 @@ Gebaut für Agenturen und Freelancer, die Kundenseiten in Deutschland ausliefern
 
 1. **Evidenz statt Raten.** Scannt die Codebasis (Dependencies, Quellcode, Config, Env-Schlüsselnamen), lässt einen **Playwright-Runtime-Scanner** gegen die Live-Seite laufen, der jeden Drittanbieter-Origin, jedes Cookie und jeden Storage-Key *vor* jeder Consent-Interaktion, nach „Ablehnen“ und nach „Akzeptieren“ aufzeichnet, und verfolgt personenbezogene Daten Hop für Hop: Browser → Edge/Middleware → API/Server Actions → Datenbank → Auftragsverarbeiter (Mail, KI-APIs, CRM, Payment) → Logs, Monitoring, CI.
 2. **Prüft** gegen einen Katalog mit über 100 Punkten: Impressum, Art.-13-Informationspflichten, § 25 TDDDG, Auftragsverarbeiter und Drittlandtransfer, Backend-Datenfluss, Formulare, KI-Funktionen (Art. 22 DSGVO, Art. 50 KI-VO), Art.-9-Gesundheitsdaten für Praxen und Pflegedienste, organisatorische Pflichten, Security-Header.
-3. **Berichtet** auf Deutsch mit 🔴/🟠/🟡/🟢/⚪️-Status, Datenfluss-Tabelle, Befundblock (Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand) und priorisiertem Maßnahmenplan.
+3. **Berichtet** auf Deutsch mit 🔴/🟠/🟡/🟢/⚪️-Status, Datenfluss-Tabelle, Befundblock (Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand → Evidenz mit ID und Evidenzstufe) und priorisiertem Maßnahmenplan.
 4. **Behebt** auf Wunsch: modulare Vorlagen für Datenschutzerklärung (DE + EN), Impressum, Cookie-Banner-Texte, VVT (Art. 30) und TOMs (Art. 32), Consent-Gating-Muster (framework-unabhängige Prinzipien + Beispiele für Plain HTML, Next.js, Angular, Astro, WordPress), dann Re-Audit der eigenen Ausgabe.
 
 Bewertungen für rund 50 gängige Dienste (Google Fonts/Analytics/Maps/reCAPTCHA, Meta Pixel, YouTube, Hotjar, Matomo, Plausible, Vercel, Supabase, Firebase, Resend, Sentry, Stripe, Calendly, OpenAI/Anthropic/Gemini-APIs, Turnstile, Friendly Captcha, …) stehen in [`references/services.md`](skills/dsgvo-audit/references/services.md).
@@ -80,7 +80,7 @@ skills/dsgvo-audit/
   SKILL.md              Workflow, Deployment-Regeln, Berichtsformat
   references/           checklist · recht (Normen, Urteile, Bußgelder) · law-watch (offene Punkte, Prüfdaten) · services · architecture (Datenfluss) · patterns (Gating)
   assets/               Vorlagen: Datenschutzerklärung (DE + EN), Impressum, Cookie-Banner-Texte, VVT (Art. 30), TOMs (Art. 32)
-  scripts/              scan-origins.mjs (Runtime-Scanner) · lint-origins.mjs (statisch) · parse-gtm.mjs · parse-har.mjs · render-report.mjs (HTML/PDF) · lib/signatures.mjs
+  scripts/              scan-origins.mjs (Runtime-Scanner) · lint-origins.mjs (statisch) · parse-gtm.mjs · parse-har.mjs · render-report.mjs (HTML/PDF) · build-evidence.mjs · list-processors.mjs · diff-scans.mjs · lib/
 examples/ci/            GitHub-Actions-Beispiel: Lint bei PRs, Runtime-Scan mit --strict auf Preview-Deployments
 agents/                 Subagent dsgvo-auditor
 tests/                  Fixtures + Tests, die die Befehle des Skills selbst ausführen

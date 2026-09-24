@@ -1,6 +1,6 @@
 {
   "name": "dsgvo-audit",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Claude skill + plugin: DSGVO/TDDDG/DDG compliance audit for websites and web apps under German law.",
   "type": "module",
@@ -21,6 +21,9 @@
     "gtm": "node skills/dsgvo-audit/scripts/parse-gtm.mjs",
     "har": "node skills/dsgvo-audit/scripts/parse-har.mjs",
     "render": "node skills/dsgvo-audit/scripts/render-report.mjs",
+    "evidence": "node skills/dsgvo-audit/scripts/build-evidence.mjs",
+    "processors": "node skills/dsgvo-audit/scripts/list-processors.mjs",
+    "diff": "node skills/dsgvo-audit/scripts/diff-scans.mjs",
     "grade": "node scripts/grade-report.mjs",
     "package": "node scripts/package-skill.mjs",
     "evals:summary": "node scripts/summarize-evals.mjs",

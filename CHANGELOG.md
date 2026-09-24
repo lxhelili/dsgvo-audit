@@ -6,6 +6,22 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.2.0] – 2026-09-24
+
+### Added
+
+- **Evidence IDs and evidence levels.** `scripts/build-evidence.mjs` numbers every observation from the scanner, HAR parser, linter and GTM parser (E-01, E-02 … — same inputs in the same order give the same IDs; a scan that did not load is skipped, never read as clean) and prints the Evidenzverzeichnis. Every 🔴/🟠 finding now ends with `**Evidenz:** E-xx · beobachtet | abgeleitet | Mandantenangabe`; SKILL.md Phase 4 defines the three levels (the claim decides, not the tool — "GA lädt vor Consent" from code without a runtime scan is *abgeleitet*).
+- **Processor overview.** `scripts/list-processors.mjs` maps every detected recipient (origins, SDKs, server-side hits, GTM tags incl. origins inside Custom HTML, form targets) to role (Art. 28 / Art. 26 / eigener Verantwortlicher / vermeiden / klären), contract, region and transfer mechanism, with the evidence IDs behind it; `--md` is the start of report section 5 plus the list of AVVs to request and the Art. 28(3) contents. Libraries that are not recipients themselves (Prisma, Nodemailer, Auth.js, AI SDK) are named with the recipient still to find. The contract status is always ⚪️ — only the client can confirm a signed AVV. Data in `scripts/lib/processors.mjs`; a test fails when a signature has no processor row.
+- **Privacy change detection.** `scripts/diff-scans.mjs` compares two scans (or HAR vs. scan, or two lints): added items are 🔴 regressions (third-party origin/cookie before consent or after "Ablehnen", third-party form target, OS-Plattform link; in lint a tracking/AI SDK, a server-side recipient, a non-EU region, an ungated origin in a load context) or 🟡 review items (DSE/banner/AVV update); removed items are listed so they leave the DSE too. Pages are matched by path; a page only the current run scanned (e.g. a new route on a preview) counts as entirely new, so a tracker there still fails `--strict`; a page not scanned this time is reported as unchecked, not as "removed". `--strict` exit 1, exit 3 for a scan without result.
+- `examples/ci/dsgvo-watch.yml` — weekly production scan against a committed baseline with `diff-scans.mjs --strict`, diff in the job summary. `dsgvo-gate.yml` now also diffs the PR's lint against the base branch.
+- `npm run evidence`, `npm run processors`, `npm run diff`; tests for all three tools in `tests/tools.test.mjs`.
+
+### Changed
+
+- `grade-report.mjs`: two new checks — every 🔴/🟠 block carries an evidence line with an E-ID and a level, and every cited E-ID is listed under an `Evidenzverzeichnis` heading. Reports written for 1.1.0 fail these checks until the evidence line and the list are added. The golden fixture shows the format (section 3 → `### Evidenzverzeichnis`, section 5 with an Evidenz column).
+- `services.md` / `processors.mjs`: Doctolib has a double role — Auftragsverarbeiter for the practice's appointment and patient management (AVV, Doctolib provides one), independent controller for the patient account. 1.1.0 called it "i. d. R. eigener Verantwortlicher, kein AVV-Automatismus", which would have let an audit skip a required AVV.
+- SKILL.md: Phase 1f (number the evidence, list the recipients), report sections 3 and 5, finding format, "Re-audit and maintenance" in Phase 5; subagent and READMEs follow.
+
 ## [1.1.0] – 2026-09-24
 
 ### Added
@@ -69,6 +85,7 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lxhelili/dsgvo-audit/releases/tag/v1.0.0

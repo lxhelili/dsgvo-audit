@@ -3,7 +3,7 @@ name: dsgvo-audit
 description: Audit a website, web app or codebase for DSGVO/GDPR, TDDDG (cookie consent) and DDG (Impressum) compliance under German law, tracing personal data from browser to backend to third parties, and generate or fix the Datenschutzerklärung, Impressum, cookie banner and consent gating. Use when the user shares a site or repo for review, asks whether a site is "legally OK" or "abmahnsicher", or mentions Datenschutz, DSGVO, GDPR, Datenschutzerklärung, Privacy Policy, Impressum, Cookie-Banner, Consent, TDDDG, AVV/DPA, Auftragsverarbeitung, Drittlandtransfer or Abmahnung, even casually ("check this site", "add datenschutz"). Also use when a third-party service is added to a client site (analytics, fonts, maps, captcha, pixel, embeds, booking, newsletter, AI/LLM API, chat widget, payment, social login) or the user asks whether it is allowed. Not for ordinary dev work that merely uses Supabase, Vercel or Resend without a compliance question.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   law-stand: "2026-09"
   repository: https://github.com/lxhelili/dsgvo-audit
 ---
@@ -89,6 +89,13 @@ Fallbacks, in order: (1) browser tools if a Chrome/built-in browser is connected
 
 Record for every data flow: **what** (data), **from where** (origin / country), **when** (before or after consent), **why** (purpose), **legal basis**, **which contract** (AVV / joint controllership / none), **retention**.
 
+**1f. Number the evidence.** Every finding must point at what it rests on. `build-evidence.mjs` turns the tool JSON into the Evidenzverzeichnis (E-01, E-02 … — same files in the same order, same IDs); `list-processors.mjs` with the same files gives every recipient with role (Art. 28 / Art. 26 / eigener Verantwortlicher), contract, region and transfer mechanism. Client statements and code lines you read yourself continue the numbering (Quelle: „Mandant, E-Mail vom …“ or „Code“).
+
+```bash
+node <skill-dir>/scripts/build-evidence.mjs scan-client.json lint-client.json gtm.json --md > evidence.md
+node <skill-dir>/scripts/list-processors.mjs scan-client.json lint-client.json gtm.json --md > processors.md
+```
+
 ### Phase 2 — Intake (ask only what you cannot derive)
 
 One batch of questions, only for what is still missing:
@@ -121,9 +128,9 @@ Write `datenschutz-audit-<domain>-<YYYY-MM-DD>.md` (for client delivery: `script
 
 1. **Management Summary** — max 5 bullets, Ampel status, top 3 risks in plain German, one sentence on evidence level (code + runtime scan / URL only / description only)
 2. **Kritische und hohe Befunde** — one block per finding (format below)
-3. **Datenfluss-Übersicht** — table: Datum | Quelle | Verarbeitung | Empfänger | Region | Rechtsgrundlage | Vertrag | Speicherdauer (from `architecture.md`)
+3. **Datenfluss-Übersicht** — table: Datum | Quelle | Verarbeitung | Empfänger | Region | Rechtsgrundlage | Vertrag | Speicherdauer (from `architecture.md`), followed by `### Evidenzverzeichnis` (output of `build-evidence.mjs` plus your own entries) and one line naming the sources and their dates
 4. **Vollständige Prüftabelle** — every checklist item with status
-5. **Drittanbieter & Auftragsverarbeiter** — Dienst | Zweck | Daten | Rechtsgrundlage | AVV | Drittland + Mechanismus | Consent nötig?
+5. **Drittanbieter & Auftragsverarbeiter** — Dienst | Zweck | Daten | Rechtsgrundlage | AVV | Drittland + Mechanismus | Consent nötig? | Evidenz — start from `list-processors.mjs --md` (role, contract, region, the AVVs to request, Art. 28(3) contents), add Zweck/Daten/Rechtsgrundlage; its role/contract/region columns are a generic mapping, verify them per provider. Whether an AVV is signed stays ⚪️ until the client confirms it
 6. **Maßnahmenplan** — Sofort / Kurzfristig / Mittelfristig, each with owner and Aufwand
 7. **Offene Fragen an den Mandanten**
 8. **Rechtlicher Hinweis** (RDG)
@@ -140,9 +147,15 @@ LG München I, 3 O 17493/20.
 **Maßnahme:** Font self-hosten (Build-time-Bundling oder .woff2 + @font-face), `<link>` und `preconnect` entfernen,
 CSP `font-src 'self'`.
 **Aufwand:** S
+**Evidenz:** E-03, E-07 · beobachtet (Runtime-Scan, vor Consent)
 ```
 
 Aufwand scale: **S** < 2 h · **M** ≤ 1 Tag · **L** > 1 Tag or needs a client decision / contract.
+
+Evidence level per finding — the claim in the Befund, not the tool, decides:
+- **beobachtet** — the evidence shows exactly what the Befund says: the request was seen before consent (scan/HAR), the code line *is* the defect (`console.log(body)`).
+- **abgeleitet** — the Befund goes one step beyond the evidence: "GA lädt vor Consent" from code without a gate but no runtime scan; a GTM trigger read from the export. Say what would confirm it.
+- **Mandantenangabe** — rests on what the client said (AVV signed, retention, headcount). Never upgrade it to beobachtet.
 
 ### Phase 5 — Remediation (only when asked to fix, not just audit)
 
@@ -153,7 +166,8 @@ Aufwand scale: **S** < 2 h · **M** ≤ 1 Tag · **L** > 1 Tag or needs a client
 - **Cookie banner**: texts and category tables from `assets/cookie-banner-texte.md` (first layer, settings layer, two-click placeholder, footer link, English variant) — only the categories and services the "after accept" scan shows; no banner at all when nothing needs consent. Rules: no pre-ticked boxes; "Ablehnen" on the first layer, as prominent and as few clicks as "Akzeptieren"; granular purposes; withdrawal as easy as consent (Art. 7(3)) via a persistent link; links to DSE and Impressum; no nag loops or dark patterns; no cookie wall for essential content; the CMP itself hosted first-party or in the EU.
 - **VVT and TOMs** (checklist section 9) from `assets/vvt-template.md` and `assets/toms-template.md`: every row of the Datenfluss-Übersicht becomes one Verarbeitungstätigkeit; in the TOMs mark each measure (S) = proven by the scan/lint/code with the evidence location, or (A) = the client's statement — never upgrade an (A) to (S).
 - **Client delivery**: `scripts/render-report.mjs report.md --out report.html` turns any produced Markdown (report, DSE, Impressum, VVT, TOMs) into a self-contained HTML file (no external fonts or scripts — the report follows the skill's own rule) with print styles; `--pdf` adds a PDF via Playwright when it is installed.
-- **Re-run Phase 3 and the scanner on your own output** before declaring done: no `[PLATZHALTER]` left, every 🔴/🟠 block has Befund/Rechtsgrundlage/Risiko/Maßnahme/Aufwand, RDG note at the end, no "abmahnsicher". (In the skill's own repository, `npm run grade` checks exactly that.)
+- **Re-audit and maintenance**: `scripts/diff-scans.mjs baseline.json current.json --md` compares two scans (or two lints, or a HAR with a scan) and lists what is new — 🔴 when it is a third-party origin/cookie before consent or after "Ablehnen", a new third-party form target, a new tracking/AI SDK, server-side recipient or non-EU region — and what is gone (remove it from DSE, banner and VVT). `--strict` exits 1 on a regression; `examples/ci/dsgvo-watch.yml` runs it weekly against a committed baseline, `dsgvo-gate.yml` shows per PR what the code adds.
+- **Re-run Phase 3 and the scanner on your own output** before declaring done: no `[PLATZHALTER]` left, every 🔴/🟠 block has Befund/Rechtsgrundlage/Risiko/Maßnahme/Aufwand/Evidenz and every cited E-ID is in the Evidenzverzeichnis, RDG note at the end, no "abmahnsicher". (In the skill's own repository, `npm run grade` checks exactly that.)
 
 ---
 
@@ -182,7 +196,10 @@ Adjacent obligations to **flag, not audit** when someone asks "ist die Seite rec
 - `scripts/lint-origins.mjs` — static lint: SDKs, origins in load contexts, storage, server-side recipients, config/regions/env key names as JSON + exit code (Phase 1a)
 - `scripts/parse-gtm.mjs` — GTM container export → tag table with triggers, Consent Mode, origins and verdict (Phase 1c)
 - `scripts/parse-har.mjs` — client-recorded HAR → scanner JSON shape (Phase 1b fallback 3)
-- `scripts/lib/signatures.mjs` — the one origin list all four scripts share
+- `scripts/build-evidence.mjs` — tool JSON → numbered Evidenzverzeichnis E-01 … (Phase 1f, report section 3)
+- `scripts/list-processors.mjs` — recipients with role, contract, region, transfer mechanism, evidence IDs and the AVVs to request (Phase 1f, report section 5)
+- `scripts/diff-scans.mjs` — two scans or two lints → what was added (regression 🔴 / review 🟡) and removed; `--strict` for CI (re-audit, monitoring)
+- `scripts/lib/signatures.mjs` — the one origin list all scripts share; `scripts/lib/processors.mjs` — role/contract per service
 - `references/architecture.md` — full-stack data-flow trace, hop by hop, with framework hints for finding handlers (Phase 1a, report section 3)
 - `references/checklist.md` — the audit checklist (Phase 3)
 - `references/services.md` — per-service verdicts incl. AI APIs, captchas, analytics, hosting (Phase 3)

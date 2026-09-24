@@ -11,7 +11,7 @@
       "name": "dsgvo-audit",
       "source": "./",
       "description": "DSGVO/TDDDG/DDG compliance audit for websites and web apps under German law — full-stack data-flow trace, runtime scanner, Datenschutzerklärung/Impressum generation, consent gating.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "category": "security",
       "author": {
         "name": "Lavdim Xhelili",
