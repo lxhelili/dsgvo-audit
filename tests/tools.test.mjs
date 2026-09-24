@@ -41,6 +41,8 @@ const clean = () => { if (existsSync(OUT)) unlinkSync(OUT); };
   check(ev.json.verdict.odrLinkStillPresent === true && ev.json.odrLinks[0].startsWith('app/layout.tsx'), 'stale OS-Plattform link in an <a href> is its own finding, not an origin');
   check(!ev.json.origins.some((o) => o.origin === 'ec.europa.eu'), 'ec.europa.eu is not listed as a loaded origin');
   check(ev.json.config.regions.some((x) => x.region === 'iad1' && x.nonEU), 'vercel.json region iad1 flagged as non-EU');
+  check(['RESEND_API_KEY', 'SENTRY_DSN', 'NEXT_PUBLIC_GA_ID'].every((k) => ev.json.config.envKeys.includes(k)), 'env keys that start with the keyword (RESEND_…, SENTRY_…) are recorded too');
+  check(ev.json.origins.some((o) => o.origin === 'www.googletagmanager.com' && o.service === 'Google tag (gtag.js)'), 'gtag.js is labelled as the Google tag, not as a GTM container');
   const pl = run('lint-origins.mjs', [join(ROOT, 'evals', 'files', 'astro-minimal'), '--out', OUT, '--strict']);
   check(pl.code === 0 && !pl.json.verdict.staticViolations.length && pl.json.verdict.notes.some((n) => /Plausible/.test(n)), 'ungated Plausible (cookieless EU, services.md 🟢) is a note, not a --strict violation');
 }

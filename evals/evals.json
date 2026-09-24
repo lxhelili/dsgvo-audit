@@ -74,7 +74,8 @@
         "The Calendly widget.js loaded on page load (script tag at the end of termin.html, before any user action) is flagged as a third-party load before any consent (🔴)",
         "No Datenschutzerklärung is generated in this turn; instead the Phase-2 intake questions are asked in one batch (Verantwortlicher, Kammer/Berufsbezeichnung, hosting, processors/AVVs, DSB, retention)",
         "The response does not invent a Kammer, register number, or hosting provider for the practice",
-        "The response distinguishes 'rechtswidrig' from 'konservative Regel' in its wording and ends with the RDG disclaimer"
+        "The response distinguishes 'rechtswidrig' from 'konservative Regel' in its wording and ends with the RDG disclaimer",
+        "Vendor facts obtained by web research (e.g. Formspree storage location, DPA availability, DPF status) carry their source and date or are marked as to be verified — not stated as plain fact"
       ]
     },
     {
@@ -137,7 +138,8 @@
         "A dedicated DSE module for the KI-Funktion is required and its contents listed (provider, purpose, data, retention, transfer, Art. 22 statement)",
         "The localStorage 'chat-session' key is assessed under § 25 TDDDG with a justification either way (technically necessary for the chosen function vs. not)",
         "Time-sensitive facts (OpenAI DPF status, EU-region availability) are marked as 'verify' / checked via WebSearch rather than asserted from memory",
-        "The response ends with the RDG disclaimer and does not call the setup 'konform' without conditions"
+        "The response ends with the RDG disclaimer and does not call the setup 'konform' without conditions",
+        "Any statement about the DPF status of OpenAI or Supabase is either absent (replaced by 'verify on dataprivacyframework.gov/list for the specific entity') or taken from that official list with a date — no DPF verdict built on a secondary website"
       ]
     }
   ]

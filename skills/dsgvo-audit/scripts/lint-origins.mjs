@@ -55,7 +55,8 @@ const STORAGE_RE = /\b(localStorage|sessionStorage|document\.cookie|cookies\(\)|
 const SERVER_RE = /\b(resend|nodemailer|sendgrid|postmark|mailgun|brevo|supabase|prisma|drizzle|mongoose|firebase|openai|anthropic|generativelanguage|mistral|groq|replicate|hubspot|pipedrive|zapier|make\.com|hooks\.slack\.com|slack\.com\/api|discord\.com\/api\/webhooks|webhook|stripe|paypal|mollie|twilio|sentry)\b/gi;
 const GATE_HINT = /consent|cookie[-_ ]?consent|usercentrics|cookiebot|klaro|borlabs|consentmanager|cmp|gtag\(['"]consent|hasConsent|onConsent|withConsent|ccm19|cookiefirst|iubenda|onetrust/i;
 const URL_RE = /https?:\/\/[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?(?:\/[^\s"'`<>)\]]*)?/gi;
-const ENV_RE = /^([A-Z][A-Z0-9_]*(?:GA|GTM|ANALYTICS|SENTRY|OPENAI|ANTHROPIC|GEMINI|GOOGLE|RESEND|POSTMARK|SENDGRID|MAILGUN|BREVO|MAILCHIMP|SUPABASE|DATABASE|FIREBASE|STRIPE|PAYPAL|MOLLIE|RECAPTCHA|HCAPTCHA|TURNSTILE|HUBSPOT|CALENDLY|POSTHOG|MIXPANEL|SLACK|ZAPIER|TWILIO|AWS|S3|CLOUDFLARE|VERCEL)[A-Z0-9_]*)=/;
+// the keyword may start the name (RESEND_API_KEY, SENTRY_DSN) or sit inside it (NEXT_PUBLIC_GA_ID)
+const ENV_RE = /^(?=[A-Z])([A-Z0-9_]*?(?:GA|GTM|ANALYTICS|SENTRY|OPENAI|ANTHROPIC|GEMINI|GOOGLE|RESEND|POSTMARK|SENDGRID|MAILGUN|BREVO|MAILCHIMP|SUPABASE|DATABASE|FIREBASE|STRIPE|PAYPAL|MOLLIE|RECAPTCHA|HCAPTCHA|TURNSTILE|HUBSPOT|CALENDLY|POSTHOG|MIXPANEL|SLACK|ZAPIER|TWILIO|AWS|S3|CLOUDFLARE|VERCEL)[A-Z0-9_]*)=/;
 const CONFIG_FILES = ['next.config.js', 'next.config.mjs', 'next.config.ts', 'vercel.json', 'netlify.toml', 'wrangler.toml', 'astro.config.mjs', 'astro.config.ts', 'nuxt.config.ts', 'svelte.config.js', 'angular.json', 'middleware.ts', 'middleware.js', 'proxy.ts', 'supabase/config.toml', 'wp-config.php', 'composer.json', 'Gemfile', 'requirements.txt'];
 
 // ---------- walk ----------

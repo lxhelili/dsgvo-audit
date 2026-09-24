@@ -83,4 +83,24 @@ console.log('grade-report against golden fixtures:');
   check(!/❌ DSE lists the Betroffenenrechte/.test(r.out), 'consent-free DSE without Art. 7 Abs. 3 passes');
   unlinkSync(tmp);
 }
+{
+  // false positives found in iteration 3: a regex in a code sample, a negated § 25 mention, an ODR mention that is not a link
+  const { writeFileSync, readFileSync, unlinkSync } = await import('node:fs');
+  const tmp = join(ROOT, 'dist-grade-fp-test.md');
+  writeFileSync(tmp, readFileSync(join(FIX, 'good-report.md'), 'utf8').replace('## 7. Offene Fragen', '```ts\ntext.replace(/[A-Z]{2}\\d{2}/g, "")\n```\n\n## 7. Offene Fragen'));
+  let r = await grade('--report', tmp);
+  check(!/❌ Report has no leftover template placeholder/.test(r.out), 'a regex inside a code block is not a template placeholder');
+  const dse = readFileSync(join(FIX, 'good-dse.md'), 'utf8').replace(/Art\.\s?7\s?Abs\.\s?3( DSGVO)?/g, 'Widerruf');
+  writeFileSync(tmp, dse + '\nDa wir keine einwilligungsbedürftigen Technologien im Sinne von § 25 Abs. 1 TDDDG einsetzen, gibt es kein Cookie-Banner.\n');
+  r = await grade('--dse', tmp);
+  check(!/❌ DSE lists the Betroffenenrechte/.test(r.out), 'a negated § 25 Abs. 1 TDDDG mention does not make the DSE consent-based');
+  const imp = readFileSync(join(FIX, 'good-impressum.md'), 'utf8');
+  writeFileSync(tmp, imp + '\n> Kein Link auf die EU-OS-Plattform (ec.europa.eu/consumers/odr) — seit 20.07.2025 abgeschaltet.\n');
+  r = await grade('--impressum', tmp);
+  check(!/❌ Impressum has no OS-Plattform link/.test(r.out), 'mentioning the ODR address in a "no link" note is not a link');
+  writeFileSync(tmp, imp + '\n[OS-Plattform](https://ec.europa.eu/consumers/odr)\n');
+  r = await grade('--impressum', tmp);
+  check(/❌ Impressum has no OS-Plattform link/.test(r.out), 'an actual ODR link is still caught');
+  unlinkSync(tmp);
+}
 process.exit(status);
