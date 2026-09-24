@@ -70,4 +70,17 @@ console.log('grade-report against golden fixtures:');
   check(!/❌ Report makes no forbidden claim/.test(r.out), 'a negated/quoted „100 % konform“ is not a forbidden claim');
   unlinkSync(tmp);
 }
+{
+  // Art. 7 Abs. 3 is required only where something rests on consent (a consent-free DSE on lit. f need not list it)
+  const { writeFileSync, readFileSync, unlinkSync } = await import('node:fs');
+  const tmp = join(ROOT, 'dist-grade-dse-test.md');
+  const dse = readFileSync(join(FIX, 'good-dse.md'), 'utf8').replace(/Art\.\s?7\s?Abs\.\s?3( DSGVO)?/g, 'Widerruf');
+  writeFileSync(tmp, dse + '\n## Newsletter\n\nRechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\n');
+  let r = await grade('--dse', tmp);
+  check(/❌ DSE lists the Betroffenenrechte[^\n]*\n\s*↳ consent-based processing but no Art\. 7 Abs\. 3/.test(r.out), 'consent-based DSE without Art. 7 Abs. 3 fails');
+  writeFileSync(tmp, dse.replace(/Art\.\s?6\s?Abs\.\s?1\s?(S\.\s?1\s?)?lit\.\s?a/g, 'Art. 6 Abs. 1 lit. f').replace(/Art\.\s?9\s?Abs\.\s?2\s?lit\.\s?a/g, 'Art. 9 Abs. 2 lit. h').replace(/§\s?25\s?Abs\.\s?1\s?TDDDG/g, '§ 25 TDDDG'));
+  r = await grade('--dse', tmp);
+  check(!/❌ DSE lists the Betroffenenrechte/.test(r.out), 'consent-free DSE without Art. 7 Abs. 3 passes');
+  unlinkSync(tmp);
+}
 process.exit(status);

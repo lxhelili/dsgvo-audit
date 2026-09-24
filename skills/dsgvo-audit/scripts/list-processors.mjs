@@ -68,7 +68,7 @@ if (argv.includes('--md')) {
   console.log('|---|---|---|---|---|---|---|');
   for (const r of recipients) console.log(`| ${cell(r.names.join(' / '))} | ${ROLE_LABEL[r.role]} | ${cell(r.contract)} | ${cell(r.region)} | ${cell(r.transfer)} | ${ids(r.evidence)} | ${CONTRACT_STATUS[r.role]} |`);
   for (const u of result.unknown) console.log(`| ${cell(u.name)} | ⚪️ Rolle klären | — | — | — | ${ids(u.evidence)} | ⚪️ Mandant |`);
-  console.log('\n_Rolle, Vertrag und Region sind eine generische Zuordnung — vor Auslieferung beim Anbieter prüfen; DPF-Status nur über https://www.dataprivacyframework.gov/list für die konkrete Entität._');
+  console.log('\n_Rolle, Vertrag und Region sind eine generische Zuordnung — vor Auslieferung beim Anbieter prüfen; DPF-Status nur über https://www.dataprivacyframework.gov/list für die konkrete Entität. Nicht aus Scans erkennbar und daher zu ergänzen: Hoster, Postfach-Anbieter, Datenbank-Hoster und alle Empfänger aus Datenfluss und Intake._');
   const av = recipients.filter((r) => r.role === 'AV');
   const jc = recipients.filter((r) => r.role === 'Art. 26');
   if (av.length || jc.length || result.unknown.length) {
