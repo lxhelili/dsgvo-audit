@@ -1,0 +1,23 @@
+[
+  { "query": "Prüfe https://praxis-beispiel.de auf Datenschutz.", "should_trigger": true },
+  { "query": "Check this repo for DSGVO before we go live: ./client-site", "should_trigger": true },
+  { "query": "Ist Calendly für eine Physiotherapie-Praxis okay?", "should_trigger": true },
+  { "query": "Schreib die Datenschutzerklärung für die Seite — hier ist der Code.", "should_trigger": true },
+  { "query": "Der Kunde will Google Analytics auf der Landingpage. Was muss ich beachten?", "should_trigger": true },
+  { "query": "Can you check this site quickly? https://tischlerei-beispiel.de — the client asked if it's legally okay", "should_trigger": true },
+  { "query": "add datenschutz to the astro site in ./site", "should_trigger": true },
+  { "query": "Wir bauen einen Chatbot mit OpenAI in die Kundenseite ein. Brauchen wir dafür was in der Datenschutzerklärung?", "should_trigger": true },
+  { "query": "Kannst du die Kundenseite kurz auf Impressum und Cookie-Banner prüfen? https://beispiel.de", "should_trigger": true },
+  { "query": "Our cookie banner only has an 'Accept' button. Is that a problem in Germany?", "should_trigger": true },
+  { "query": "Der Kunde hat eine Abmahnung wegen Google Fonts bekommen — was jetzt?", "should_trigger": true },
+  { "query": "Review the contact form in app/api/contact/route.ts — it sends to Resend and logs the body. Anything wrong privacy-wise?", "should_trigger": true },
+
+  { "query": "Add a Supabase table for blog posts with RLS so only authors can edit their own posts.", "should_trigger": false },
+  { "query": "Why is my Vercel build failing with 'Module not found: next/font'?", "should_trigger": false },
+  { "query": "Resend emails land in spam — set up SPF and DKIM for beispiel.de", "should_trigger": false },
+  { "query": "Write unit tests for the checkout component.", "should_trigger": false },
+  { "query": "Explain the difference between localStorage and sessionStorage.", "should_trigger": false },
+  { "query": "Migrate this Angular 15 app to signals.", "should_trigger": false },
+  { "query": "Schreib mir einen Blogartikel über die Geschichte der Tischlerei in Solingen.", "should_trigger": false },
+  { "query": "Optimize the Lighthouse score of the landing page — LCP is 4.2s.", "should_trigger": false }
+]

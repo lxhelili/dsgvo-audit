@@ -1,0 +1,139 @@
+{
+  "skill_name": "dsgvo-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "nextjs-ga-fonts-audit",
+      "prompt": "Prüfe dieses Next.js-Projekt einer Werbeagentur auf Datenschutz, bevor es live geht. Der Code liegt im Ordner evals/files/nextjs-ga-fonts. Es gibt noch keine Live-URL. Schreib den Audit-Bericht.",
+      "expected_output": "A German audit report (datenschutz-audit-*.md) in the Phase-4 structure. GA4 loading pre-consent and Google Fonts from the CDN are 🔴 with the right norms; the contact route is traced as a pipeline (Resend, Sentry with the body in `extra`, console.log of the body, Vercel logs in iad1); the stale OS-Plattform link is 🟠; evidence level is stated as code only, no runtime scan; the report ends with the RDG disclaimer.",
+      "files": [
+        "evals/files/nextjs-ga-fonts/package.json",
+        "evals/files/nextjs-ga-fonts/app/layout.tsx",
+        "evals/files/nextjs-ga-fonts/app/api/contact/route.ts",
+        "evals/files/nextjs-ga-fonts/.env.example",
+        "evals/files/nextjs-ga-fonts/vercel.json"
+      ],
+      "expectations": [
+        "A report file matching datenschutz-audit-*.md is written and contains the eight Phase-4 sections in order (Management Summary … Rechtlicher Hinweis)",
+        "GA4 (gtag.js loaded in app/layout.tsx without any consent gate) is a 🔴 finding citing § 25 Abs. 1 TDDDG and Art. 6 Abs. 1 lit. a DSGVO, with the file reference app/layout.tsx",
+        "Google Fonts loaded from fonts.googleapis.com is a 🔴 finding that cites LG München I, 3 O 17493/20 and recommends self-hosting (next/font or .woff2 in the repo)",
+        "The contact form is traced as a data flow with at least these recipients: Resend, Sentry, Vercel logs — and the Datenfluss-Übersicht table names Resend as a US processor whose AVV/DPA status is ⚪️ or an open question",
+        "console.log(body) in app/api/contact/route.ts and Sentry.captureException(..., { extra: { body } }) are flagged as PII in logs / error tracking (🟠), with the file reference",
+        "The link to https://ec.europa.eu/consumers/odr in the footer is flagged as the stale OS-Plattform link (🟠, § 5 UWG), with the instruction to remove it — not to 'keep it' or 'add it'",
+        "vercel.json regions ['iad1'] is flagged: functions run in the US; recommendation fra1 (and the note that Edge Middleware is global regardless)",
+        "The hidden utm_source field forwarded in the mail is mentioned as marketing data that the DSE must cover",
+        "The Management Summary states the evidence level as 'code only / no runtime scan / no live URL' or equivalent, and the report does not claim to know what the CMP does at runtime",
+        "The report never uses the words 'abmahnsicher' or '100 % konform' and ends with the RDG disclaimer from references/recht.md",
+        "No Datenschutzerklärung is generated (the user asked for an audit only)"
+      ],
+      "grader_args": [
+        "--expect",
+        "3 O 17493/20",
+        "--expect",
+        "iad1|fra1",
+        "--expect-no",
+        "abmahnsicher"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "static-site-runtime-scan",
+      "prompt": "Hier ist eine fertige statische Kundenseite (reines HTML) im Ordner tests/fixtures/site-accept-order — serve sie lokal (z. B. python3 -m http.server) und prüf sie auf Datenschutz, inklusive Laufzeitverhalten des Cookie-Banners. Kurzbericht reicht.",
+      "expected_output": "The executor serves the folder, runs scripts/scan-origins.mjs against it, and reports from the scan: nothing third-party before consent, the reject button works, Hotjar loads only after 'Alle akzeptieren' (so it is a consent-gated service that the DSE must list), the first layer offers a reject option. The report says which page was scanned and that one scan is one page.",
+      "files": [
+        "tests/fixtures/site-accept-order/index.html"
+      ],
+      "expectations": [
+        "The runtime scanner scripts/scan-origins.mjs is executed against a locally served URL (visible in the transcript), not replaced by reading the HTML only",
+        "The report states that no third-party origin is contacted before consent (🟢 for that item), based on the scan's pre-consent phase",
+        "Hotjar (static.hotjar.com) is identified as loading only after 'Alle akzeptieren' and is listed as a consent-required service (§ 25 TDDDG, Art. 6 Abs. 1 lit. a) that belongs in the Datenschutzerklärung — with the session-recording risk note",
+        "The report confirms that the first layer has a reject option ('Nur notwendige akzeptieren') and that no new third-party requests fire after it",
+        "The report notes that the accept phase clicked 'Alle akzeptieren' (not the 'Nur notwendige' button) — i.e. the service inventory is complete",
+        "The report says which page/state was scanned and that subpages must be scanned separately (one scan is one page, one state, one moment)",
+        "The missing /impressum and /datenschutz pages (404 in the scan) are flagged as 🔴 — links exist but the targets do not",
+        "The output ends with the RDG disclaimer and does not call the site 'abmahnsicher'"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "praxis-art9-intake",
+      "prompt": "Ein Kunde (Praxis für ästhetische Chirurgie) hat mir nur diese eine Seite geschickt: evals/files/praxis-booking/termin.html. Er fragt, ob das so okay ist und ob ich die Datenschutzerklärung dafür schreiben kann.",
+      "expected_output": "The executor recognises Art. 9 health data from the form fields (Behandlung select, Beschwerden/Vorerkrankungen/Medikamente textarea, photo upload), classifies Formspree and Calendly as US services in the health-data path (🔴 under the conservative rule, marked as rule, with the lawyer-exception note), cites § 203 StGB, Art. 9(2)(a)/(h) + § 22 BDSG, DSFA and DSB questions — and does NOT write a Datenschutzerklärung yet: it asks the intake questions (Phase 2) first, because Verantwortlicher, Kammer, hosting, processors are unknown.",
+      "files": [
+        "evals/files/praxis-booking/termin.html",
+        "evals/files/praxis-booking/README.md"
+      ],
+      "expectations": [
+        "The response identifies the form as collecting Art. 9 data (health), naming at least the 'Beschwerden / Vorerkrankungen / Medikamente' field, the treatment select and the photo upload as the reasons",
+        "Formspree as the form target is 🔴 for Art. 9 content and explicitly marked as a conservative rule (R / 'konservative Regel'), with the note that a lawyer can sign off an exception (DPF + AVV + TIA + § 203-Absicherung)",
+        "Calendly is treated the same way: 🔴 for a Heilberuf under the rule, Art. 9 in the booking subject, with an EU/self-hosted alternative named (e.g. Cal.com self-hosted or an EU booking tool)",
+        "§ 203 StGB (Berufsgeheimnis) and Art. 9 Abs. 2 lit. a / lit. h DSGVO i. V. m. § 22 BDSG are cited as the legal frame",
+        "DSFA (Art. 35) and DSB (Art. 37 Abs. 1 lit. c / § 38 BDSG) are raised as questions or findings, not silently skipped",
+        "The Calendly widget.js loaded in the page head is flagged as a third-party load before any consent (🔴)",
+        "No Datenschutzerklärung is generated in this turn; instead the Phase-2 intake questions are asked in one batch (Verantwortlicher, Kammer/Berufsbezeichnung, hosting, processors/AVVs, DSB, retention)",
+        "The response does not invent a Kammer, register number, or hosting provider for the practice",
+        "The response distinguishes 'rechtswidrig' from 'konservative Regel' in its wording and ends with the RDG disclaimer"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "astro-minimal-dse-generation",
+      "prompt": "Schreib die Datenschutzerklärung und das Impressum für diese Astro-Seite einer Tischlerei. Code: evals/files/astro-minimal. Die Intake-Antworten des Kunden stehen in evals/files/astro-minimal/INTAKE.md.",
+      "expected_output": "Two German files: a Datenschutzerklärung containing only the modules the evidence supports (Verantwortlicher, Allgemeines, Hosting Hetzner + Server-Logs 7 Tage, Cookies/Endgerät with 'keine einwilligungsbedürftigen', Kontaktformular with the exact fields and the mailbox as recipient, Plausible on Art. 6(1)(f) with the EU note, Rechte incl. highlighted Art. 21, Beschwerderecht naming LDI NRW, Datensicherheit, Pflicht zur Bereitstellung, keine automatisierte Entscheidung, Stand), and an Impressum with the intake data. No [PLATZHALTER] left in either file; anything genuinely unknown is listed in the chat message instead.",
+      "files": [
+        "evals/files/astro-minimal/package.json",
+        "evals/files/astro-minimal/src/layouts/Layout.astro",
+        "evals/files/astro-minimal/src/pages/kontakt.astro",
+        "evals/files/astro-minimal/src/pages/api/contact.ts",
+        "evals/files/astro-minimal/INTAKE.md"
+      ],
+      "expectations": [
+        "A Datenschutzerklärung file and an Impressum file are written (German)",
+        "Neither delivered file contains the string '[PLATZHALTER]' or any unfilled [BRACKET] placeholder from the templates; unknown items, if any, are listed in the chat message",
+        "The Datenschutzerklärung contains NO module for Google Fonts, Google Analytics, YouTube, Maps, Newsletter, Bewerbungen, Nutzerkonto, Zahlungen or KI — none of these exist in the code (fonts are @fontsource, i.e. self-hosted)",
+        "Plausible is described on Art. 6 Abs. 1 lit. f DSGVO as cookieless with the berechtigtes Interesse named, EU hosting and the DPA mentioned — not on consent, and not omitted",
+        "Hosting names Hetzner Online GmbH with the AVV, server-log fields, and the 7-day retention from INTAKE.md",
+        "The Kontaktformular module lists exactly the fields in kontakt.astro (Name, E-Mail, Nachricht — the honeypot is not a data field), names the mailbox/SMTP as the recipient, Art. 6 Abs. 1 lit. b/f, and the 6-month retention from INTAKE.md",
+        "The cookies section states that no consent-requiring cookies or storage are used (no CMP needed) — consistent with the code",
+        "The Art. 21 Widerspruchsrecht is visually highlighted (blockquote/bold) and the Beschwerderecht names the LDI NRW as the supervisory authority for a Solingen company",
+        "The Impressum contains the HRB number, Amtsgericht Wuppertal, USt-IdNr., Vertretungsberechtigter and no OS-Plattform link; the § 36 VSBG sentence is present or its omission is justified by ≤ 10 employees",
+        "Both files carry a Stand date and the RDG note is delivered with them"
+      ],
+      "grader_args": [
+        "--expect-no",
+        "Google Fonts|Google Analytics|YouTube|Maps|Newsletter|Bewerbung|Nutzerkonto|Zahlung|KI-",
+        "--expect",
+        "Plausible",
+        "--expect",
+        "Hetzner",
+        "--expect",
+        "7 Tage",
+        "--expect",
+        "6 Monate"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "ai-chatbot-processor",
+      "prompt": "Wir haben auf der Website einer Steuerberatung einen Chat-Assistenten mit OpenAI eingebaut (Code in evals/files/nextjs-ai-chat). Ist das datenschutzrechtlich okay so? Was müssen wir ändern?",
+      "expected_output": "The executor treats the OpenAI API as an Auftragsverarbeiter (DPA/API terms, no training, retention, region/DPF check to be verified via WebSearch), flags the missing Art. 50 KI-VO labelling (the UI says 'Unser Team antwortet sofort' — misleading; in force since 02.08.2026), flags the triage ('einfach/komplex/abgelehnt') as a potential Art. 22 decision needing human review, the unlimited chat_logs retention in Supabase with the service-role key, the localStorage session id (§ 25 TDDDG technically necessary or not — justify), the risk of Art. 9-adjacent inputs (tax situation can reveal health, religion, union — Kirchensteuer!), and asks for a KI module in the DSE.",
+      "files": [
+        "evals/files/nextjs-ai-chat/package.json",
+        "evals/files/nextjs-ai-chat/app/api/chat/route.ts",
+        "evals/files/nextjs-ai-chat/components/Chat.tsx",
+        "evals/files/nextjs-ai-chat/.env.example"
+      ],
+      "expectations": [
+        "OpenAI is classified as an Auftragsverarbeiter (Art. 28) with the four checks named: DPA/API terms, no training on inputs, retention (zero-data-retention or a stated period), region/transfer mechanism (DPF status of the entity to be verified, not assumed)",
+        "The UI text 'Unser Team antwortet sofort' is flagged: the chatbot is not labelled as AI — Art. 50 KI-VO (in force since 02.08.2026) requires that users are told they are interacting with an AI system, and the response proposes concrete label text",
+        "The triage into 'einfach / komplex / abgelehnt' is identified as a potential Art. 22 DSGVO automated decision (esp. 'abgelehnt') and human review / DSE disclosure is required",
+        "The unlimited storage of full transcripts in Supabase chat_logs is flagged (no retention/deletion, Art. 5 Abs. 1 lit. e), with a concrete retention proposal",
+        "The response notes that tax-related chat input can carry special-category data (e.g. Kirchensteuer → religion; Behinderten-Pauschbetrag → health) and applies the conservative rule for Art. 9 input to a US LLM, marked as a rule",
+        "A dedicated DSE module for the KI-Funktion is required and its contents listed (provider, purpose, data, retention, transfer, Art. 22 statement)",
+        "The localStorage 'chat-session' key is assessed under § 25 TDDDG with a justification either way (technically necessary for the chosen function vs. not)",
+        "Time-sensitive facts (OpenAI DPF status, EU-region availability) are marked as 'verify' / checked via WebSearch rather than asserted from memory",
+        "The response ends with the RDG disclaimer and does not call the setup 'konform' without conditions"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "steuerberatung-beispiel",
+  "private": true,
+  "dependencies": {
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "openai": "4.95.0",
+    "@supabase/supabase-js": "2.49.0"
+  }
+}

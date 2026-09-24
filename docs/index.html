@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="How the dsgvo-audit Claude skill is structured and how an audit runs: evidence, data-flow trace, runtime scanner, verdicts, versioning.">
+<title>How dsgvo-audit works</title>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<style>
+  /* Self-hosted fonts (SIL OFL 1.1, see fonts/LICENSE.md) — the skill's own rule 2: nothing from a font CDN. */
+  @font-face { font-family: "Newsreader"; font-style: normal; font-weight: 200 800; font-stretch: 100%; font-display: swap; src: url("fonts/newsreader-latin-opsz-normal.woff2") format("woff2-variations"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/ibm-plex-sans-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+</style>
+<style>
+  :root {
+    --bg: #F6F7F4;
+    --surface: #FFFFFF;
+    --surface-2: #EEF1EC;
+    --ink: #1B2430;
+    --muted: #5C6773;
+    --line: #D5DAD3;
+    --line-strong: #B8C0B7;
+    --accent: #0E5A8A;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E3EEF6;
+    --red: #C8321E;   --red-soft: #FBE9E6;
+    --orange: #D97706; --orange-soft: #FDF0DC;
+    --yellow: #B69300; --yellow-soft: #FBF5D6;
+    --green: #2E7D32;  --green-soft: #E4F2E5;
+    --grey: #7C868F;   --grey-soft: #ECEEF0;
+    --code-bg: #F0F2EE;
+    --shadow: 0 1px 2px rgba(27,36,48,.06), 0 8px 24px -12px rgba(27,36,48,.18);
+    --display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #14181C; --surface: #1B2128; --surface-2: #222A32;
+      --ink: #E6EAF0; --muted: #98A3B0; --line: #2A323B; --line-strong: #3A444F;
+      --accent: #5FB0E6; --accent-ink: #0B1720; --accent-soft: #17303F;
+      --red: #F0705C; --red-soft: #3A1F1B; --orange: #F2A23A; --orange-soft: #3A2A14;
+      --yellow: #E4C64A; --yellow-soft: #37311A; --green: #6CC46F; --green-soft: #1B3320;
+      --grey: #98A3B0; --grey-soft: #262E36; --code-bg: #10141A;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #14181C; --surface: #1B2128; --surface-2: #222A32;
+    --ink: #E6EAF0; --muted: #98A3B0; --line: #2A323B; --line-strong: #3A444F;
+    --accent: #5FB0E6; --accent-ink: #0B1720; --accent-soft: #17303F;
+    --red: #F0705C; --red-soft: #3A1F1B; --orange: #F2A23A; --orange-soft: #3A2A14;
+    --yellow: #E4C64A; --yellow-soft: #37311A; --green: #6CC46F; --green-soft: #1B3320;
+    --grey: #98A3B0; --grey-soft: #262E36; --code-bg: #10141A;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 0 64px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 500; line-height: 1.15; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); letter-spacing: -.01em; }
+  h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+  h3 { font-size: 1.2rem; font-weight: 600; }
+  p { margin: 0; max-width: 68ch; }
+  a { color: var(--accent); }
+  code, .mono { font-family: var(--mono); font-size: .88em; }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0; }
+  .eyebrow { font-family: var(--mono); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .lede { font-size: 1.12rem; max-width: 62ch; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* nav */
+  .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .nav-inner { max-width: 1040px; margin: 0 auto; padding: 10px 20px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .nav-inner::-webkit-scrollbar { display: none; }
+  .nav a { white-space: nowrap; text-decoration: none; color: var(--muted); font-size: .86rem; font-weight: 500; padding: 6px 10px; border-radius: 999px; border: 1px solid transparent; }
+  .nav a:hover, .nav a.active { color: var(--ink); background: var(--surface); border-color: var(--line); }
+  .nav a.lang { margin-left: auto; border-color: var(--line); color: var(--ink); }
+
+  /* hero */
+  .hero { padding-block: 56px 40px; display: grid; gap: 18px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: .76rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+  .pill b { color: var(--ink); font-weight: 500; }
+  .strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; }
+  .strip div { border-top: 3px solid var(--line-strong); padding-top: 8px; font-size: .82rem; }
+  .strip div b { display: block; font-family: var(--mono); font-size: .72rem; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+  .strip div:nth-child(1) { border-top-color: var(--accent); }
+  @media (max-width: 640px) { .strip { grid-template-columns: repeat(2, 1fr); } }
+
+  /* sections */
+  section { padding-block: 48px; border-top: 1px solid var(--line); scroll-margin-top: 64px; }
+  .sec-head { display: grid; gap: 10px; margin-bottom: 26px; }
+  .sec-head p { max-width: 66ch; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .grid-4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 760px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .grid-4 { grid-template-columns: 1fr; } }
+  .codes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .codes span { font-family: var(--mono); font-size: .8rem; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
+  .codes span b { font-weight: 600; margin-right: 6px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .card h3 { margin-bottom: 8px; }
+  .card p + p { margin-top: 8px; }
+  figure { margin: 0; display: grid; gap: 10px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .86rem; color: var(--muted); max-width: 70ch; }
+  .scroll-x { overflow-x: auto; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: .95rem; max-width: 76ch; }
+  .list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+  .list li { max-width: 68ch; }
+  .kbd-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font: inherit; }
+  .btn { cursor: pointer; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); padding: 7px 14px; border-radius: 8px; font-weight: 500; font-size: .9rem; display: inline-flex; align-items: center; gap: 8px; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  /* anatomy */
+  .tree { font-family: var(--mono); font-size: .86rem; line-height: 1.7; overflow-x: auto; }
+  .tree button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+  .tree button:hover { background: var(--surface-2); }
+  .tree button.sel { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .tree .dir { color: var(--muted); padding: 2px 8px; }
+  .tree .ind1 { padding-left: 22px; } .tree .ind2 { padding-left: 40px; }
+  .file-panel { min-height: 240px; display: grid; gap: 12px; align-content: start; }
+  .file-panel .path { font-family: var(--mono); font-size: .9rem; color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: .76rem; font-family: var(--mono); padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: .9rem; }
+  .kv dt { color: var(--muted); font-family: var(--mono); font-size: .78rem; padding-top: 3px; }
+  .kv dd { margin: 0; }
+
+  /* stepper */
+  .stepper { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .step { all: unset; cursor: pointer; display: grid; gap: 4px; padding: 12px 12px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); position: relative; overflow: hidden; }
+  .step .n { font-family: var(--mono); font-size: .72rem; color: var(--muted); letter-spacing: .06em; }
+  .step .t { font-weight: 600; font-size: .95rem; }
+  .step .bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--accent); transition: width .25s linear; }
+  .step.on { border-color: var(--accent); }
+  .step.on .bar { width: 100%; }
+  .step.done .bar { width: 100%; background: var(--line-strong); }
+  @media (max-width: 760px) { .stepper { grid-template-columns: repeat(2, 1fr); } }
+  .phase-detail { margin-top: 16px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .phase-detail { grid-template-columns: 1fr; } }
+  .io { display: grid; gap: 10px; }
+  .io div { display: grid; gap: 3px; }
+  .io b { font-family: var(--mono); font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .io ul { margin: 0; padding-left: 1.1em; font-size: .92rem; display: grid; gap: 3px; }
+
+  /* dataflow */
+  .hop-panel { display: grid; gap: 8px; min-height: 120px; }
+  .hop-panel ul { margin: 0; padding-left: 1.1em; font-size: .92rem; display: grid; gap: 4px; }
+  svg .hop { cursor: pointer; }
+  svg .hop rect { fill: var(--surface); stroke: currentColor; stroke-width: 1.2; transition: fill .2s, stroke .2s; }
+  svg .hop.sel rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.8; }
+  svg .hop:hover rect { stroke: var(--accent); }
+  svg text { font-family: var(--sans); fill: currentColor; }
+  svg .mono { font-family: var(--mono); }
+  .flow { stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -22; } }
+  @media (prefers-reduced-motion: reduce) { .flow { animation: none; } .step .bar { transition: none; } }
+
+  /* scanner demo */
+  .term { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-family: var(--mono); font-size: .82rem; line-height: 1.6; min-height: 300px; }
+  .term .ph { color: var(--muted); margin-top: 8px; }
+  .term .ph:first-child { margin-top: 0; }
+  .term .row { opacity: 0; transform: translateY(3px); transition: opacity .3s, transform .3s; }
+  .term .row.in { opacity: 1; transform: none; }
+  .term .r { color: var(--red); } .term .o { color: var(--orange); } .term .g { color: var(--green); } .term .y { color: var(--yellow); }
+  .term .dim { color: var(--muted); }
+
+  /* verdicts */
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .dot.red { background: var(--red); } .dot.orange { background: var(--orange); } .dot.yellow { background: var(--yellow); } .dot.green { background: var(--green); } .dot.grey { background: var(--grey); border: 1px solid var(--line-strong); }
+  .toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+  .toggle button { all: unset; cursor: pointer; padding: 7px 14px; font-size: .88rem; font-weight: 500; color: var(--muted); }
+  .toggle button.on { background: var(--accent); color: var(--accent-ink); }
+  .finding { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .finding header { padding: 10px 14px; background: var(--red-soft); border-bottom: 1px solid var(--line); font-weight: 600; display: flex; gap: 10px; align-items: center; }
+  .finding header.rule { background: var(--orange-soft); }
+  .finding .body { padding: 12px 14px; display: grid; gap: 8px; font-size: .92rem; }
+  .finding .body b { font-family: var(--mono); font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; display: block; margin-bottom: 2px; }
+
+  /* versioning */
+  .sync { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sync div { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--surface); font-size: .84rem; }
+  .sync div code { display: block; margin-top: 4px; font-size: .8rem; }
+  @media (max-width: 640px) { .sync { grid-template-columns: repeat(2, 1fr); } }
+
+  footer { border-top: 1px solid var(--line); padding-block: 28px; font-size: .88rem; color: var(--muted); display: grid; gap: 8px; }
+</style>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-inner">
+    <a href="#anatomy">Anatomy</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#evidence">Evidence</a>
+    <a href="#dataflow">Data flow</a>
+    <a href="#scanner">Scanner</a>
+    <a href="#verdicts">Verdicts</a>
+    <a href="#versioning">Versioning</a>
+    <a href="#evals">Evals</a>
+    <a href="#extend">Extending</a>
+    <a href="de/" class="lang" hreflang="de" lang="de">Deutsch</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-meta">
+    <span class="pill"><b>dsgvo-audit</b> v1.0.0</span>
+    <span class="pill">law stand <b>2026-09</b></span>
+    <span class="pill">DSGVO · TDDDG · DDG</span>
+    <span class="pill">MIT</span>
+  </div>
+  <h1>How dsgvo-audit works</h1>
+  <p class="lede">A Claude skill that audits a website the way a careful code reviewer would: it collects evidence before forming an opinion, follows every piece of personal data from the browser to the last third party, grades each finding against German privacy law, and only then writes the Datenschutzerklärung. This page shows how the package is split up and what happens in each step.</p>
+  <div class="strip" aria-label="The five phases">
+    <div><b>1 · EVIDENCE</b>static scan, runtime scan, data-flow trace</div>
+    <div><b>2 · INTAKE</b>ask only what code can't tell</div>
+    <div><b>3 · AUDIT</b>11-section checklist, Ampel status</div>
+    <div><b>4 · REPORT</b>German, findings with § and Aufwand</div>
+    <div><b>5 · REMEDIATION</b>templates, gating, re-audit</div>
+  </div>
+</header>
+
+<!-- ============================================================ ANATOMY -->
+<section id="anatomy">
+  <div class="sec-head">
+    <span class="eyebrow">01 · Anatomy</span>
+    <h2>One skill, ten files, loaded in layers</h2>
+    <p>Claude never reads the whole package at once. The description is always in context and decides <em>whether</em> the skill fires. SKILL.md loads when it does and holds the workflow. Everything else is pulled in only by the phase that needs it, so a 100 KB package costs a few kilobytes of context until the audit actually starts. Click a file to see when it is read and by which phase.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 900 190" role="img" aria-label="Three loading layers: the description is always in context, SKILL.md loads on trigger, references, assets and scripts load per phase.">
+      <defs><marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="20" y="30" width="200" height="120" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="120" y="58" text-anchor="middle" font-weight="600">Layer 0 · always</text>
+        <text x="120" y="80" text-anchor="middle" class="mono" font-size="11">description (~150 words)</text>
+        <text x="120" y="104" text-anchor="middle" fill="var(--muted)">decides triggering</text>
+        <text x="120" y="122" text-anchor="middle" fill="var(--muted)">scoped: review, compliance</text>
+        <text x="120" y="138" text-anchor="middle" fill="var(--muted)">question, adding a service</text>
+
+        <line x1="222" y1="90" x2="278" y2="90" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrL)"/>
+        <text x="250" y="80" text-anchor="middle" font-size="10" fill="var(--muted)">triggers</text>
+
+        <rect x="280" y="30" width="200" height="120" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="380" y="58" text-anchor="middle" font-weight="600">Layer 1 · on trigger</text>
+        <text x="380" y="80" text-anchor="middle" class="mono" font-size="11">SKILL.md (~170 lines)</text>
+        <text x="380" y="104" text-anchor="middle" fill="var(--muted)">stance, five phases,</text>
+        <text x="380" y="122" text-anchor="middle" fill="var(--muted)">report format, deployment</text>
+        <text x="380" y="138" text-anchor="middle" fill="var(--muted)">rules with legal nuance</text>
+
+        <line x1="482" y1="90" x2="538" y2="90" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrL)"/>
+        <text x="510" y="80" text-anchor="middle" font-size="10" fill="var(--muted)">per phase</text>
+
+        <rect x="540" y="30" width="340" height="120" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="710" y="58" text-anchor="middle" font-weight="600">Layer 2 · on demand</text>
+        <text x="710" y="80" text-anchor="middle" class="mono" font-size="11">references/ · assets/ · scripts/</text>
+        <text x="710" y="104" text-anchor="middle" fill="var(--muted)">read when a phase points at them;</text>
+        <text x="710" y="122" text-anchor="middle" fill="var(--muted)">the scanner is executed, never read;</text>
+        <text x="710" y="138" text-anchor="middle" fill="var(--muted)">templates only in remediation</text>
+      </g>
+      <text x="450" y="178" text-anchor="middle" font-size="11" fill="var(--muted)">context cost grows only as the audit progresses</text>
+    </svg>
+    <figcaption>Progressive loading: the part that is always present is small and decides triggering; the heavy legal material enters context only when a phase needs it.</figcaption>
+  </figure>
+
+  <div class="grid-2" style="margin-top: 28px;">
+    <div class="card tree" id="tree" aria-label="File tree">
+      <div class="dir">skills/dsgvo-audit/</div>
+      <button data-f="skill" class="ind1 sel">SKILL.md</button>
+      <div class="dir ind1">references/</div>
+      <button data-f="checklist" class="ind2">checklist.md</button>
+      <button data-f="recht" class="ind2">recht.md</button>
+      <button data-f="services" class="ind2">services.md</button>
+      <button data-f="architecture" class="ind2">architecture.md</button>
+      <button data-f="patterns" class="ind2">patterns.md</button>
+      <div class="dir ind1">assets/</div>
+      <button data-f="dse" class="ind2">datenschutzerklaerung-template.md</button>
+      <button data-f="impressum" class="ind2">impressum-template.md</button>
+      <div class="dir ind1">scripts/</div>
+      <button data-f="scanner" class="ind2">scan-origins.mjs</button>
+      <div class="dir">agents/</div>
+      <button data-f="agent" class="ind1">dsgvo-auditor.md</button>
+    </div>
+    <div class="card file-panel" id="filePanel" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- ============================================================ WORKFLOW -->
+<section id="workflow">
+  <div class="sec-head">
+    <span class="eyebrow">02 · Workflow</span>
+    <h2>Five phases, in order, no skipping</h2>
+    <p>The order is the point. A Datenschutzerklärung written before anyone knows what the site loads lists services that aren't there and misses the ones that are, which is itself a transparency defect under Art. 5(1)(a). So evidence comes first, questions second, and the policy last. Click a phase, or let it play.</p>
+  </div>
+  <div class="kbd-row" style="margin-bottom: 14px;">
+    <button class="btn primary" id="playBtn" aria-pressed="false">▶ Play the sequence</button>
+    <span class="muted" style="font-size: .86rem;">Phase 5 runs only when the user asks for fixes, not for an audit.</span>
+  </div>
+  <div class="stepper" id="stepper" role="tablist" aria-label="Phases"></div>
+  <div class="phase-detail" id="phaseDetail"></div>
+</section>
+
+<!-- ============================================================ EVIDENCE -->
+<section id="evidence">
+  <div class="sec-head">
+    <span class="eyebrow">03 · Evidence</span>
+    <h2>Four levels of evidence, and the report says which one it had</h2>
+    <p>What Claude can see depends on what it was given. Each level down loses visibility, and the report states the level reached so the client knows what was verified and what was inferred. The skill refuses to produce a generic policy from a description alone; it asks the intake questions instead. A scan that cannot reach the site returns no verdict (exit code 3), so the report drops one rung and says so; a network failure is never read as a clean site.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 900 300" role="img" aria-label="Evidence ladder from codebase plus runtime scan (sees almost everything) down to description only (sees nothing, asks questions).">
+      <defs><marker id="arrE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <!-- rungs -->
+        <g>
+          <rect x="20" y="20" width="250" height="56" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="34" y="43" font-weight="600">1a · Codebase + 1b · runtime scan</text>
+          <text x="34" y="62" fill="var(--muted)" font-size="11">deps, source, config, env names; live origins</text>
+          <rect x="290" y="30" width="590" height="36" rx="5" fill="var(--green-soft)"/>
+          <rect x="290" y="30" width="560" height="36" rx="5" fill="var(--green)" opacity=".85"/>
+          <text x="300" y="53" font-size="11" fill="var(--accent-ink)" font-weight="500">sees: third-party origins, storage, handlers, DB, processors, cookies incl. Set-Cookie, what the CMP blocks</text>
+        </g>
+        <g>
+          <rect x="20" y="90" width="250" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="34" y="113" font-weight="600">1b · Live URL only (scanner)</text>
+          <text x="34" y="132" fill="var(--muted)" font-size="11">no repo — browser tools as fallback</text>
+          <rect x="290" y="100" width="590" height="36" rx="5" fill="var(--green-soft)"/>
+          <rect x="290" y="100" width="400" height="36" rx="5" fill="var(--green)" opacity=".7"/>
+          <text x="300" y="123" font-size="11" fill="var(--accent-ink)" font-weight="500">sees the browser side fully · blind to server handlers, DB region, AVVs</text>
+        </g>
+        <g>
+          <rect x="20" y="160" width="250" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="34" y="183" font-weight="600">Fetch HTML only</text>
+          <text x="34" y="202" fill="var(--muted)" font-size="11">script/iframe/preconnect tags, /impressum</text>
+          <rect x="290" y="170" width="590" height="36" rx="5" fill="var(--yellow-soft)"/>
+          <rect x="290" y="170" width="200" height="36" rx="5" fill="var(--yellow)" opacity=".8"/>
+          <text x="300" y="193" font-size="11" fill="var(--ink)" font-weight="500">static tags only · misses runtime-injected tags, Set-Cookie, CMP behaviour</text>
+        </g>
+        <g>
+          <rect x="20" y="230" width="250" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="34" y="253" font-weight="600">Description only</text>
+          <text x="34" y="272" fill="var(--muted)" font-size="11">"a Next.js site for a physio practice"</text>
+          <rect x="290" y="240" width="590" height="36" rx="5" fill="var(--red-soft)"/>
+          <text x="300" y="263" font-size="11" fill="var(--ink)" font-weight="500">sees nothing → intake questions, never a generic template (Art. 5(1)(a))</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>The evidence ladder. Bars show how much of the data flow each level can verify; the report's Management Summary names the level in one sentence.</figcaption>
+  </figure>
+  <div class="grid-3" style="margin-top: 22px;">
+    <div class="card"><h3>Static scan</h3><p>Dependencies first (<code>package.json</code> is the fastest, most reliable evidence), then source for third-party origins and device storage, then server-side code for where PII leaves the app, then config for regions and headers. Env files are scanned for key <em>names</em> only; values never reach a report.</p></div>
+    <div class="card"><h3>What grep can't see</h3><p>Google Tag Manager is a black box until tags fire, so the skill asks for a container export. A fetch can't see cookies set by API responses. A language switch means every language needs its own DSE (Art. 12). Each of these is an explicit step, not a hope.</p></div>
+    <div class="card"><h3>Recorded per data flow</h3><p>What (data) · from where (origin, country) · when (before or after consent) · why (purpose) · legal basis · which contract (AVV, joint controllership, none) · retention. Seven fields, filled for every flow, become the report's data-flow table.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ DATA FLOW -->
+<section id="dataflow">
+  <div class="sec-head">
+    <span class="eyebrow">04 · Data flow</span>
+    <h2>A contact form is a pipeline with four recipients</h2>
+    <p>Earlier drafts audited the page. The skill audits the path. Personal data enters in the browser and moves through edge code, API handlers, a database and a set of third parties before it lands in logs and backups. Every hop is a place where a legal basis, a contract or a retention period can be missing. Click a hop to see what is checked there.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="Data flow chain: browser, edge and middleware, API and server actions, database, third parties, logs monitoring and CI, people and processes, with a packet moving along it." id="dataflowSvg">
+      <defs>
+        <marker id="arrD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <path id="dfPath" d="M 90 80 L 990 80" fill="none"/>
+      </defs>
+      <g font-size="12">
+        <!-- backbone -->
+        <line x1="90" y1="80" x2="920" y2="80" stroke="currentColor" stroke-width="1.2" class="flow" marker-end="url(#arrD)"/>
+        <!-- hops -->
+        <g class="hop" data-hop="0" transform="translate(20,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Browser</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 0</text></g>
+        <g class="hop" data-hop="1" transform="translate(160,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Edge / MW</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 1</text></g>
+        <g class="hop" data-hop="2" transform="translate(300,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">API / Actions</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 2</text></g>
+        <g class="hop" data-hop="3" transform="translate(440,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Database</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 3</text></g>
+        <g class="hop" data-hop="4" transform="translate(580,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Third parties</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 4</text></g>
+        <g class="hop" data-hop="5" transform="translate(720,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Logs · CI</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 5</text></g>
+        <g class="hop" data-hop="6" transform="translate(860,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">People</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 6</text></g>
+        <!-- packet -->
+        <circle r="6" fill="var(--accent)" id="packet"><animateMotion dur="9s" repeatCount="indefinite" rotate="0"><mpath href="#dfPath"/></animateMotion></circle>
+        <!-- example path below -->
+        <text x="20" y="150" font-size="11" class="mono" fill="var(--muted)">example · Kontaktformular</text>
+        <text x="20" y="172" font-size="11.5">name, e-mail, message</text>
+        <text x="160" y="172" font-size="11.5">fra1 · no cookie</text>
+        <text x="300" y="172" font-size="11.5">sendContact()</text>
+        <text x="300" y="188" font-size="10.5" fill="var(--muted)">logs body? rate limit?</text>
+        <text x="440" y="172" font-size="11.5">contact_requests</text>
+        <text x="440" y="188" font-size="10.5" fill="var(--muted)">eu-central-1 · RLS</text>
+        <text x="440" y="202" font-size="10.5" fill="var(--muted)">deletion cron 6 months</text>
+        <text x="580" y="172" font-size="11.5">Resend (US) · Sentry</text>
+        <text x="580" y="188" font-size="10.5" fill="var(--muted)">AVV signed? tracking off?</text>
+        <text x="720" y="172" font-size="11.5">Vercel logs 30 d</text>
+        <text x="720" y="188" font-size="10.5" fill="var(--muted)">log drain = processor</text>
+        <text x="860" y="172" font-size="11.5">inbox, dashboard</text>
+        <text x="860" y="188" font-size="10.5" fill="var(--muted)">MFA · Art. 15 in 30 d</text>
+        <text x="20" y="232" font-size="11" fill="var(--muted)">one form → Supabase, Resend, Sentry, Vercel logs: four recipients the Datenschutzerklärung must name (Art. 13(1)(e)), each with its own AVV and retention</text>
+      </g>
+    </svg>
+    <figcaption>The seven hops from <code>references/architecture.md</code>. The moving dot is one submission of a contact form; the row beneath shows what each hop looks like for that form and the question the audit asks there.</figcaption>
+  </figure>
+  <div class="card hop-panel" id="hopPanel" style="margin-top: 16px;" aria-live="polite"></div>
+</section>
+
+<!-- ============================================================ SCANNER -->
+<section id="scanner">
+  <div class="sec-head">
+    <span class="eyebrow">05 · Runtime scanner</span>
+    <h2>Three states of the same page</h2>
+    <p><code>scripts/scan-origins.mjs</code> opens the site in a fresh Chromium profile and records what the browser does before anyone touches the banner. Then it clicks "Ablehnen" and checks whether anything new loads. Then it reloads, clicks "Akzeptieren", and takes an inventory of everything the site can load, which is the list the Datenschutzerklärung has to cover. In that last step it looks for an explicit accept-all button first and never clicks a reject-equivalent such as "Nur notwendige akzeptieren", so the inventory is complete even when the banner lists the reject option first. Replay the output on either fixture that ships in the repo.</p>
+  </div>
+  <div class="grid-2">
+    <figure>
+      <svg viewBox="0 0 460 330" role="img" aria-label="Scanner mechanism: fresh profile loads the page, records requests cookies and storage, clicks reject and diffs, reloads and clicks accept for a full inventory, then writes JSON and a summary.">
+        <defs><marker id="arrS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+        <g font-size="11.5">
+          <rect x="20" y="16" width="420" height="40" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="230" y="34" text-anchor="middle" font-weight="600">fresh Chromium profile · de-DE · Europe/Berlin</text>
+          <text x="230" y="49" text-anchor="middle" font-size="10" fill="var(--muted)">no cookies, no storage, no prior consent</text>
+          <line x1="230" y1="58" x2="230" y2="78" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+
+          <rect x="20" y="80" width="420" height="56" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="34" y="100" font-weight="600">A · load + settle + scroll → record</text>
+          <text x="34" y="117" font-size="10.5" fill="var(--muted)">requests (origin, type), Set-Cookie headers, cookies, local/sessionStorage</text>
+          <text x="34" y="130" font-size="10.5" fill="var(--muted)">links: Impressum, Datenschutz, stale ODR link · GET /impressum, /datenschutz</text>
+          <line x1="230" y1="138" x2="230" y2="158" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+
+          <rect x="20" y="160" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="120" y="182" text-anchor="middle" font-weight="600">B · click "Ablehnen"</text>
+          <text x="120" y="200" text-anchor="middle" font-size="10.5" fill="var(--muted)">DE/EN regex · roles first</text>
+          <line x1="222" y1="188" x2="238" y2="188" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+          <rect x="240" y="160" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="340" y="182" text-anchor="middle" font-weight="600">diff vs. A</text>
+          <text x="340" y="200" text-anchor="middle" font-size="10.5" fill="var(--muted)">new origins after reject = 🔴</text>
+          <line x1="230" y1="218" x2="230" y2="238" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+
+          <rect x="20" y="240" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="120" y="262" text-anchor="middle" font-weight="600">C · reload, "Akzeptieren"</text>
+          <text x="120" y="280" text-anchor="middle" font-size="10.5" fill="var(--muted)">accept-all first · never a reject match</text>
+          <line x1="222" y1="268" x2="238" y2="268" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+          <rect x="240" y="240" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="340" y="262" text-anchor="middle" font-weight="600">JSON + summary</text>
+          <text x="340" y="280" text-anchor="middle" font-size="10.5" fill="var(--muted)">--strict → exit 1 · no page → exit 3</text>
+          <text x="230" y="320" text-anchor="middle" font-size="10.5" fill="var(--muted)">blind spots stated: GTM container contents, subpages, server side</text>
+        </g>
+      </svg>
+      <figcaption>The scanner's three states. State A alone answers the § 25 TDDDG question; state B catches CMPs that ignore rejection; state C produces the service list for Art. 13. If the page never loads there is no state A, and the scanner says so instead of printing an empty pass.</figcaption>
+    </figure>
+    <div>
+      <div class="kbd-row" style="margin-bottom: 10px;"><button class="btn primary" id="runScan">▶ Run</button><div class="toggle" role="group" aria-label="Fixture"><button class="on" data-fx="site">tests/fixtures/site</button><button data-fx="order">site-accept-order</button></div></div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="codes" style="margin-top: 10px;" aria-label="Exit codes"><span><b>0</b>ok</span><span><b>1</b>--strict violation</span><span><b>2</b>usage / no Playwright</span><span><b>3</b>page not loaded, no verdict</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ VERDICTS -->
+<section id="verdicts">
+  <div class="sec-head">
+    <span class="eyebrow">06 · Verdicts</span>
+    <h2>Five statuses, and an honest line between law and rule</h2>
+    <p>Every checklist item gets one of five statuses. Some of the skill's rules are stricter than the law requires, because for a small practice or care service the documentation burden of the lawful-but-complicated path rarely pays off. Those rules stay 🔴 in the report, but the report says they are the agency's rule, not the statute, so the client and their lawyer can decide. Toggle the example to see the difference in wording.</p>
+  </div>
+  <div class="grid-2">
+    <div class="scroll-x">
+      <table>
+        <thead><tr><th>Status</th><th>Meaning</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><span class="dot red"></span><b>Kritisch</b></td><td>Unlawful with Abmahn-, Bußgeld- or damages risk. Blocks go-live.</td><td>GA firing pre-consent · Google Fonts from CDN · no Impressum</td></tr>
+          <tr><td><span class="dot orange"></span><b>Hoch</b></td><td>Clear defect, fix this sprint.</td><td>No reject on first layer · missing Art. 13 items · stale OS-Plattform link · PII in logs</td></tr>
+          <tr><td><span class="dot yellow"></span><b>Mittel</b></td><td>Defensible but weak, or a conservative-rule breach.</td><td>Vague retention · no VVT · US analytics with consent</td></tr>
+          <tr><td><span class="dot green"></span><b>OK</b></td><td>Conforms.</td><td>Self-hosted fonts · AVV filed · EU region pinned</td></tr>
+          <tr><td><span class="dot grey"></span><b>Unklar</b></td><td>Needs client input or runtime verification. Says exactly what.</td><td>GTM without container export · DPF status of an entity</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="kbd-row" style="margin-bottom: 12px;">
+        <div class="toggle" role="group" aria-label="Framing">
+          <button class="on" data-frame="law">The law says</button>
+          <button data-frame="rule">Our rule says</button>
+        </div>
+      </div>
+      <div class="finding" id="finding"></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top: 22px;"><b>Deployment rules with their nuance.</b> No consent → no third-party execution (law; essentials like the CMP or a payment iframe are exempt under § 25 Abs. 2 Nr. 2 TDDDG). Fonts and CDN assets self-hosted (law; consent would cure it but nobody consents to a font). Legitimate interest doesn't cure § 25 (law). Art. 9 data → no US services in the data path (rule). AVV before go-live (law). US transfers name their mechanism, DPF only for the listed entity (law). AI APIs are processors and need labelling under Art. 50 KI-VO (law). Never copy a policy (Urheberrecht). Never soften a finding, but always say which kind it is.</p>
+</section>
+
+<!-- ============================================================ VERSIONING -->
+<section id="versioning">
+  <div class="sec-head">
+    <span class="eyebrow">07 · Versioning &amp; distribution</span>
+    <h2>One tag, two audiences</h2>
+    <p>The repo is a Claude Code plugin. Pushing a version tag builds the <code>.skill</code> package and publishes a GitHub Release, so Claude Code users update with one command and Claude.ai or Cowork users download a file. Every release also records a <em>law stand</em>, the month up to which the legal references were verified, because the law moves and a compliance tool must say how old its knowledge is.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 1000 230" role="img" aria-label="Release pipeline: version bump, changelog, git tag, release workflow builds the .skill and publishes a GitHub Release; Claude Code users update via plugin update, Claude.ai users upload the .skill.">
+      <defs><marker id="arrV" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="20" y="60" width="170" height="64" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="105" y="84" text-anchor="middle" font-weight="600">npm run version:bump</text>
+        <text x="105" y="102" text-anchor="middle" font-size="10" class="mono" fill="var(--muted)">1.1.0 --law-stand 2026-11</text>
+        <text x="105" y="116" text-anchor="middle" font-size="10.5" fill="var(--muted)">syncs 4 files + Stand</text>
+        <line x1="192" y1="92" x2="228" y2="92" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+
+        <rect x="230" y="60" width="150" height="64" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="305" y="84" text-anchor="middle" font-weight="600">CHANGELOG + commit</text>
+        <text x="305" y="102" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">git tag v1.1.0</text>
+        <text x="305" y="116" text-anchor="middle" font-size="10.5" fill="var(--muted)">npm test must be green</text>
+        <line x1="382" y1="92" x2="418" y2="92" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+
+        <rect x="420" y="60" width="170" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="505" y="84" text-anchor="middle" font-weight="600">release.yml</text>
+        <text x="505" y="102" text-anchor="middle" font-size="10.5" fill="var(--muted)">tag == plugin.json version?</text>
+        <text x="505" y="116" text-anchor="middle" font-size="10.5" fill="var(--muted)">validate → package → release</text>
+
+        <line x1="592" y1="80" x2="648" y2="44" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+        <line x1="592" y1="104" x2="648" y2="140" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+
+        <rect x="650" y="14" width="330" height="60" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="664" y="36" font-weight="600">Claude Code · plugin marketplace</text>
+        <text x="664" y="54" font-size="10.5" class="mono" fill="var(--muted)">/plugin update dsgvo-audit@lxhelili</text>
+        <text x="664" y="67" font-size="10.5" fill="var(--muted)">skill + subagent, detected via version in plugin.json</text>
+
+        <rect x="650" y="110" width="330" height="60" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="664" y="132" font-weight="600">Claude.ai / Cowork · GitHub Release</text>
+        <text x="664" y="150" font-size="10.5" class="mono" fill="var(--muted)">dsgvo-audit.skill  (skill + agent bundled)</text>
+        <text x="664" y="163" font-size="10.5" fill="var(--muted)">upload under Settings → Skills</text>
+
+        <text x="20" y="200" font-size="11" fill="var(--muted)">semver: major = workflow/report/verdict changes · minor = new services, items, patterns · patch = corrections</text>
+        <text x="20" y="218" font-size="11" fill="var(--muted)">law stand ≠ version: a patch can move the stand; the stand tells the reader how old the legal knowledge is</text>
+      </g>
+    </svg>
+    <figcaption>From a version bump to both audiences. The tag must equal <code>plugin.json</code>'s version or the workflow refuses, and the package step re-runs the validator so a broken skill is never shipped.</figcaption>
+  </figure>
+  <h3 style="margin: 22px 0 10px;">Four places carry the version; one command keeps them equal</h3>
+  <div class="sync">
+    <div><b>plugin.json</b><code>"version": "1.0.0"</code><span class="muted">what Claude Code compares</span></div>
+    <div><b>marketplace.json</b><code>"version": "1.0.0"</code><span class="muted">catalog entry</span></div>
+    <div><b>package.json</b><code>"version": "1.0.0"</code><span class="muted">tooling</span></div>
+    <div><b>SKILL.md</b><code>metadata.version · law-stand</code><span class="muted">travels inside the .skill</span></div>
+  </div>
+  <p class="muted" style="margin-top: 10px; font-size: .9rem;"><code>npm run validate</code> fails when they drift, when the CHANGELOG lacks the section, when <code>evals/evals.json</code> points at a fixture that does not exist, or when a known earlier mistake reappears (brace-glob grep, § 7 Nr. 3 UWG, an OS-Plattform link without a removal note). It warns when the description comes within 40 characters of the 1024-character limit.</p>
+</section>
+
+<!-- ============================================================ EVALS -->
+<section id="evals">
+  <div class="sec-head">
+    <span class="eyebrow">08 · Evals</span>
+    <h2>Tests prove the tools; evals grade the auditor</h2>
+    <p><code>npm test</code> shows that the grep block finds things and the scanner clicks the right button. It says nothing about whether an audit written with the skill is any good: whether it finds the GA4 tag in the layout, calls Formspree a rule-based 🔴 rather than a legal one, or asks for the Kammer instead of inventing one. Evals measure that. Each one is an invented fixture, a prompt phrased the way a developer would type it, and a list of expectations a lazy run would fail. Run with the skill and without it, the difference in pass rate is what the skill is worth; run against the previous version, the difference is what an edit did.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="Eval loop: a fixture and prompt go to two runs, one with the skill and one baseline; both outputs are graded by an LLM grader against the expectations and by a script for structure; the pass rates are compared in a benchmark.">
+      <defs><marker id="arrQ" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="20" y="70" width="190" height="90" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="115" y="94" text-anchor="middle" font-weight="600">Eval</text>
+        <text x="115" y="112" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">evals/files/&lt;fixture&gt;</text>
+        <text x="115" y="128" text-anchor="middle" font-size="10.5" fill="var(--muted)">prompt as a developer types it</text>
+        <text x="115" y="144" text-anchor="middle" font-size="10.5" fill="var(--muted)">8–11 expectations</text>
+
+        <line x1="212" y1="100" x2="268" y2="58" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+        <line x1="212" y1="130" x2="268" y2="172" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+
+        <rect x="270" y="20" width="190" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="365" y="46" text-anchor="middle" font-weight="600">Run with skill</text>
+        <text x="365" y="66" text-anchor="middle" font-size="10.5" fill="var(--muted)">subagent, skill loaded</text>
+        <rect x="270" y="140" width="190" height="70" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="365" y="166" text-anchor="middle" font-weight="600">Baseline</text>
+        <text x="365" y="186" text-anchor="middle" font-size="10.5" fill="var(--muted)">no skill, or the previous version</text>
+
+        <line x1="462" y1="55" x2="518" y2="95" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+        <line x1="462" y1="175" x2="518" y2="135" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+
+        <rect x="520" y="60" width="220" height="110" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="630" y="84" text-anchor="middle" font-weight="600">Grading</text>
+        <text x="630" y="104" text-anchor="middle" font-size="10.5" fill="var(--muted)">LLM grader: each expectation</text>
+        <text x="630" y="118" text-anchor="middle" font-size="10.5" fill="var(--muted)">passed / failed, with evidence</text>
+        <text x="630" y="140" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">grade-report.mjs: structure,</text>
+        <text x="630" y="154" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">RDG, placeholders, § 5 DDG</text>
+
+        <line x1="742" y1="115" x2="798" y2="115" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+
+        <rect x="800" y="60" width="180" height="110" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="890" y="84" text-anchor="middle" font-weight="600">Benchmark</text>
+        <text x="890" y="106" text-anchor="middle" font-size="11" class="mono">with skill  41 / 48</text>
+        <text x="890" y="124" text-anchor="middle" font-size="11" class="mono" fill="var(--muted)">baseline   19 / 48</text>
+        <text x="890" y="148" text-anchor="middle" font-size="10.5" fill="var(--muted)">pass rate · time · tokens</text>
+
+        <text x="500" y="238" text-anchor="middle" font-size="11" fill="var(--muted)">the numbers above are illustrative until the first iteration has run; the shape of the comparison is the point</text>
+      </g>
+    </svg>
+    <figcaption>One iteration of skill-creator's loop. The same fixture and prompt run twice; a grader agent judges the substance against the expectations, a script judges the structure, and the benchmark puts the two configurations side by side.</figcaption>
+  </figure>
+
+  <h3 style="margin: 22px 0 10px;">Five output evals, each built to catch one way of doing it wrong</h3>
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th>Eval</th><th>Fixture</th><th>What it catches</th></tr></thead>
+      <tbody>
+        <tr><td><code>nextjs-ga-fonts-audit</code></td><td>Next.js: GA4 before consent, Google Fonts from the CDN, contact route to Resend + Sentry with the body in <code>extra</code>, <code>regions: ["iad1"]</code>, stale ODR link</td><td>Evidence-first from code only; the hop trace (one form, four recipients); the evidence-level sentence; audit only when audit was asked</td></tr>
+        <tr><td><code>static-site-runtime-scan</code></td><td>Static site with "Nur notwendige akzeptieren" listed before "Alle akzeptieren"</td><td>That the scanner is actually run, not replaced by reading HTML; that the reject-equivalent is not mistaken for accept; a 404 behind an existing Impressum link is 🔴</td></tr>
+        <tr><td><code>praxis-art9-intake</code></td><td>Aesthetic-surgery booking page: treatment select, Beschwerden/Medikamente textarea, photo upload, Formspree, Calendly</td><td>Art. 9 recognised from the fields; US services in the health path as a rule-based 🔴 with the lawyer-exception note; § 203 StGB, DSFA, DSB raised; intake questions instead of a generic policy</td></tr>
+        <tr><td><code>astro-minimal-dse-generation</code></td><td>Astro on Hetzner, @fontsource, Plausible, nodemailer to the own mailbox, a full <code>INTAKE.md</code></td><td>Module discipline: only what the evidence supports; Plausible on 6(1)(f), not consent; retention from intake; no placeholder left; Art. 21 highlighted; LDI NRW named</td></tr>
+        <tr><td><code>ai-chatbot-processor</code></td><td>OpenAI chat route with a triage system prompt, unlimited <code>chat_logs</code> in Supabase, UI text "Unser Team antwortet sofort"</td><td>LLM as Auftragsverarbeiter (DPA, no training, retention, region); Art. 50 KI-VO labelling; Art. 22 for the triage; tax input as Art. 9-adjacent; "verify" for the DPF status</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid-3" style="margin-top: 22px;">
+    <div class="card"><h3>Trigger evals</h3><p>Twenty prompts in German and English, twelve that should open the skill and eight that should not (a Supabase table, a Vercel build error, SPF for Resend). They test the description alone and protect its last sentence, the one that keeps ordinary dev work from turning into an audit.</p></div>
+    <div class="card"><h3>Deterministic grader</h3><p><code>scripts/grade-report.mjs</code> checks what needs no judgment: eight sections in order, every 🔴/🟠 block with Befund, Rechtsgrundlage, Risiko, Maßnahme and Aufwand, the RDG disclaimer, no "abmahnsicher", no leftover placeholder, § 5 DDG rather than TMG. Golden and broken fixtures keep the grader itself honest in CI.</p></div>
+    <div class="card"><h3>When to run</h3><p>Any edit to SKILL.md, references or templates: output evals against the previous version. Any edit to the description: trigger evals, three runs per prompt. A law-stand bump: output evals, and a new expectation for every changed verdict. A release: all three, with the numbers in the changelog.</p></div>
+  </div>
+  <p class="note" style="margin-top: 22px;"><b>What evals cannot tell you.</b> They measure against the fixtures and expectations someone wrote. A legal position that is wrong in <code>recht.md</code> and repeated in an expectation passes with full marks. The primary-source rule in CONTRIBUTING is the check on the expectations; the evals check that the skill applies what the references say.</p>
+</section>
+
+<!-- ============================================================ EXTEND -->
+<section id="extend">
+  <div class="sec-head">
+    <span class="eyebrow">09 · Extending</span>
+    <h2>Four kinds of contribution, each with a home and a guard</h2>
+    <p>The parts that need many eyes are the ones that go stale: service verdicts, legal references and framework patterns. Each has a file it belongs in, an issue template that asks for the source it needs, and a test that catches the most likely way to break it. The fourth kind, an eval, is how a change to any of the other three gets measured.</p>
+  </div>
+  <div class="grid-4">
+    <div class="card">
+      <h3>Legal update</h3>
+      <p>A ruling, a law change, new guidance. Goes into <code>recht.md</code>, and into <code>checklist.md</code> or <code>services.md</code> when it changes a verdict. Needs a primary source with a date. Bumps the law stand.</p>
+      <p class="muted" style="font-size: .86rem;">Guard: validator rejects known-stale citations; PR checklist asks for the source.</p>
+    </div>
+    <div class="card">
+      <h3>Service entry</h3>
+      <p>A row in <code>services.md</code> (consent? basis? region? verdict + alternative), an origin regex in the scanner's <code>SIGNATURES</code> list so it gets labelled, and a DSE module if the generic one doesn't fit.</p>
+      <p class="muted" style="font-size: .86rem;">Guard: scanner test proves detection on a fixture page; vendor docs required.</p>
+    </div>
+    <div class="card">
+      <h3>Pattern</h3>
+      <p>A consent-gating or self-hosting example for a framework that isn't covered, added under the seven generic principles in <code>patterns.md</code>. Principles stay framework-agnostic; examples illustrate them.</p>
+      <p class="muted" style="font-size: .86rem;">Guard: it must gate the load, not the use; anti-patterns list is the checklist.</p>
+    </div>
+    <div class="card">
+      <h3>Eval</h3>
+      <p>A small invented fixture with every signal on purpose, a prompt as a developer would type it, and 8–11 expectations in <code>evals/evals.json</code> that a lazy run fails. A new verdict or legal position gets one, so a regression would show.</p>
+      <p class="muted" style="font-size: .86rem;">Guard: validator checks fixtures exist and ids are unique; the run compares against the previous version.</p>
+    </div>
+  </div>
+  <h3 style="margin: 26px 0 10px;">What <code>npm test</code> runs</h3>
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th>Check</th><th>What it protects</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td><code>validate.mjs</code></td><td>Package integrity, version sync, frontmatter, dangling references, agent definition, eval definitions</td><td>Static checks, no dependencies</td></tr>
+        <tr><td><code>phase1.test.sh</code></td><td>The Phase 1 commands actually find things</td><td>Extracts the real bash block from SKILL.md, runs it on a fixture repo, asserts hits and that no secret value is printed</td></tr>
+        <tr><td><code>grade-report.test.mjs</code></td><td>The deterministic grader itself</td><td>Accepts the golden report, policy and Impressum; rejects the broken report for seven named reasons</td></tr>
+        <tr><td><code>scanner.test.mjs</code></td><td>The runtime scanner end to end</td><td>Three cases: the non-compliant page (pre-consent origins, reject diff, accept inventory, stale ODR link), the banner with the reject option first, and an unreachable URL that must exit 3 without a verdict</td></tr>
+        <tr><td><code>package</code></td><td>The <code>.skill</code> is buildable and validated</td><td>Runs in CI on every push; artifact kept 14 days</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <div><b>Not legal advice.</b> The skill produces technical-organisational compliance reviews, not Rechtsberatung under the RDG. Every deliverable it writes ends with that disclaimer, and a lawyer or the client's Datenschutzbeauftragte(r) signs off before go-live.</div>
+  <div>MIT · <a href="https://github.com/lxhelili/dsgvo-audit">github.com/lxhelili/dsgvo-audit</a> · law stand 2026-09 · <a href="de/" hreflang="de" lang="de">Deutsche Fassung</a></div>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- anatomy ---------- */
+  var FILES = {
+    skill: { path: 'skills/dsgvo-audit/SKILL.md', size: '~170 lines', when: 'On trigger — the only file always read once the skill fires.', phases: [1,2,3,4,5], what: 'Stance (analyst, not lawyer), the five phases, the report structure with a worked finding, the deployment rules with their legal nuance, and the list of files with when to open them.', why: 'Kept under 200 lines so the model reads it whole. Detail lives in references.' },
+    checklist: { path: 'references/checklist.md', size: '11 sections · ~110 items', when: 'Phase 3, walked top to bottom.', phases: [3], what: 'Impressum, Art. 13, § 25 TDDDG consent, processors and transfers, backend data flow, forms, AI features, Art. 9, organisational duties, technical, adjacent obligations to flag.', why: 'Each item names the norm and marks conservative rules with (R), so the status can say what kind of finding it is.' },
+    recht: { path: 'references/recht.md', size: '~95 lines · Stand 2026-09', when: 'Phase 3 for citations; Phase 4 for the RDG text.', phases: [3,4], what: 'Norms map, Art. 6 bases, Art. 9, DSB and DSFA triggers, third-country transfers with DPF status, case law list, fines, the rule-vs-law wording table, the RDG disclaimer.', why: 'Carries a verification date and tells the model to web-search anything time-sensitive rather than trust the file.' },
+    services: { path: 'references/services.md', size: '~50 services in 6 tables', when: 'Phase 3, per third party found in Phase 1.', phases: [3], what: 'Consent needed? DSGVO basis, region, verdict and safer alternative for fonts, analytics, captchas, embeds, hosting, mail, payment, CRM, and an AI/LLM API module.', why: 'The verdict column explains itself; (R) marks rules that go beyond the law.' },
+    architecture: { path: 'references/architecture.md', size: '7 hops + framework table', when: 'Phase 1, after the static scan.', phases: [1,4], what: 'What to check at each hop from browser to people and processes, the data-flow table for the report, and where handlers live per framework.', why: 'Turns "check the form" into "follow the form through six systems".' },
+    patterns: { path: 'references/patterns.md', size: '7 principles + examples', when: 'Phase 5 only.', phases: [5], what: 'Framework-agnostic gating principles, then examples for plain HTML, Next.js, Angular, Astro, WordPress; Consent Mode, two-click embeds, region pinning, security headers.', why: 'Principles first so a stack that isn\'t listed is still covered.' },
+    dse: { path: 'assets/datenschutzerklaerung-template.md', size: '20 sections, modular', when: 'Phase 5 only.', phases: [5], what: 'German policy template with modules for hosting, cookies, contact, booking, accounts and social login, payment, newsletter, applications, AI features, per-service blocks, rights, security.', why: 'Modules are deleted when evidence doesn\'t show the service; [PLATZHALTER] must be filled or listed, never shipped.' },
+    impressum: { path: 'assets/impressum-template.md', size: '§ 5 DDG + variants', when: 'Phase 5 only.', phases: [5], what: 'Impressum with modules for regulated professions, licensed activities (Pflegedienst), editorial content, VSBG notice. No OS-Plattform link since 2025-07-20.', why: 'Check notes at the bottom prevent the classic copy-paste mistakes.' },
+    scanner: { path: 'scripts/scan-origins.mjs', size: '~310 lines, Playwright', when: 'Phase 1b — executed, never read into context.', phases: [1,5], what: 'Pre-consent recording, reject diff, accept inventory (accept-all first, never a reject match), Pflichtseiten check, JSON + summary; exit 1 for --strict violations, exit 3 with no verdict when the page cannot be loaded.', why: 'A fetch cannot see runtime tags or Set-Cookie headers; a real browser can. A failed load must never look like a clean site.' },
+    agent: { path: 'agents/dsgvo-auditor.md', size: 'Claude Code subagent', when: 'Separately, when invoked as a subagent or proactively before deploys.', phases: [1,2,3,4,5], what: 'Analyst identity, loads the skill via the Skill tool, summary of the workflow, lines it never crosses.', why: 'Lets the audit run in its own context window, isolated from the coding session.' }
+  };
+  var PHASE_NAMES = ['Evidence','Intake','Audit','Report','Remediation'];
+  function renderFile(key) {
+    var f = FILES[key]; var p = $('#filePanel');
+    p.innerHTML = '<div class="path">' + f.path + '</div>' +
+      '<div class="chips">' + PHASE_NAMES.map(function (n, i) { return '<span class="chip' + (f.phases.indexOf(i+1) >= 0 ? ' on' : '') + '">' + (i+1) + ' ' + n + '</span>'; }).join('') + '</div>' +
+      '<dl class="kv"><dt>size</dt><dd>' + f.size + '</dd><dt>loaded</dt><dd>' + f.when + '</dd><dt>contains</dt><dd>' + f.what + '</dd><dt>why</dt><dd>' + f.why + '</dd></dl>';
+    $$('#tree button').forEach(function (b) { b.classList.toggle('sel', b.dataset.f === key); });
+  }
+  $$('#tree button').forEach(function (b) { b.addEventListener('click', function () { renderFile(b.dataset.f); }); });
+  renderFile('skill');
+
+  /* ---------- workflow ---------- */
+  var PHASES = [
+    { n: 'Phase 1', t: 'Evidence', tag: 'never guess', reads: ['architecture.md', 'scan-origins.mjs'], inputs: ['Repo, live URL, or only a description'], does: ['Static scan: dependencies → source origins → device storage → server-side handlers → config and env key names', 'Runtime scan on the live URL, subpages separately; exit code 3 means no verdict → browser tools, HTML fetch or a HAR as fallbacks, and the report says which level it reached', 'Data-flow trace hop by hop', 'GTM detected → ask for the container export', 'Language switch → every language needs its own DSE'], out: ['Evidence table: what · where · when · why · basis · contract · retention', 'Evidence level stated for the report'] },
+    { n: 'Phase 2', t: 'Intake', tag: 'ask only what code can\'t tell', reads: [], inputs: ['Gaps left by Phase 1'], does: ['One batch of questions: Verantwortlicher, register, regulated profession, DSB, AVVs signed, Art. 9 inputs, newsletter/accounts/payments/AI features, ≤ 10 employees'], out: ['Fact sheet for Impressum and DSE', 'Open questions list for the report'] },
+    { n: 'Phase 3', t: 'Audit', tag: 'every item, one status', reads: ['checklist.md', 'services.md', 'recht.md'], inputs: ['Evidence table + fact sheet'], does: ['Walk all 11 checklist sections', 'Per third party: verdict from services.md', 'Web search for anything time-sensitive: DPF list entry, Positivlisten, new rulings, Digital Omnibus status', 'Mark conservative rules as such'], out: ['Status per item with norm and evidence location'] },
+    { n: 'Phase 4', t: 'Report', tag: 'German, structured, honest', reads: ['recht.md (RDG text)'], inputs: ['Statuses + evidence'], does: ['Management Summary with Ampel and evidence level', 'One block per 🔴/🟠 finding: Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand (S/M/L)', 'Data-flow table, full checklist table, processor table', 'Action plan with owners, open questions, RDG disclaimer'], out: ['datenschutz-audit-<domain>-<date>.md (HTML/PDF on request)'] },
+    { n: 'Phase 5', t: 'Remediation', tag: 'only when asked', reads: ['patterns.md', 'datenschutzerklaerung-template.md', 'impressum-template.md', 'scan-origins.mjs'], inputs: ['A request to fix, not just audit'], does: ['DSE from the modular template: delete modules without evidence, fill every placeholder', 'Impressum from the template', 'Consent gating: gate the load, not the use', 'Banner rules: reject on first layer, no dark patterns, withdrawal as easy as consent', 'Re-run Phase 3 and the scanner on the own output'], out: ['Policy, Impressum, gated code, verified by a second scan'] }
+  ];
+  var cur = 0, timer = null;
+  var stepper = $('#stepper');
+  stepper.innerHTML = PHASES.map(function (p, i) { return '<button class="step" role="tab" data-i="' + i + '"><span class="n">' + p.n.toUpperCase() + '</span><span class="t">' + p.t + '</span><span class="muted" style="font-size:.8rem">' + p.tag + '</span><span class="bar"></span></button>'; }).join('');
+  function showPhase(i) {
+    cur = i;
+    $$('.step').forEach(function (s, k) { s.classList.toggle('on', k === i); s.classList.toggle('done', k < i); s.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+    var p = PHASES[i];
+    $('#phaseDetail').innerHTML =
+      '<div class="card"><h3>' + p.n + ' · ' + p.t + '</h3><div class="io"><div><b>does</b><ul>' + p.does.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div></div></div>' +
+      '<div class="card"><div class="io"><div><b>input</b><ul>' + p.inputs.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div><div><b>output</b><ul>' + p.out.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div><div><b>reads</b><div class="chips">' + (p.reads.length ? p.reads.map(function (r) { return '<span class="chip on">' + r + '</span>'; }).join('') : '<span class="chip">nothing new — SKILL.md only</span>') + '</div></div></div></div>';
+  }
+  $$('.step').forEach(function (s) { s.addEventListener('click', function () { stopPlay(); showPhase(+s.dataset.i); }); });
+  function stopPlay() { if (timer) { clearInterval(timer); timer = null; } $('#playBtn').textContent = '▶ Play the sequence'; $('#playBtn').setAttribute('aria-pressed', 'false'); }
+  $('#playBtn').addEventListener('click', function () {
+    if (timer) { stopPlay(); return; }
+    showPhase(0); this.textContent = '⏸ Pause'; this.setAttribute('aria-pressed', 'true');
+    timer = setInterval(function () { if (cur >= 4) { stopPlay(); return; } showPhase(cur + 1); }, reduced ? 4000 : 2600);
+  });
+  showPhase(0);
+
+  /* ---------- data flow ---------- */
+  var HOPS = [
+    { t: 'Hop 0 · Browser', checks: ['Foreign origins before consent (scanner), fonts, icon kits, CDN, CMP host, preconnect/dns-prefetch', 'Cookies, localStorage, sessionStorage, IndexedDB', 'Form fields: every one justified (Art. 5(1)(c)); hidden fields with UTM/gclid; file uploads (CV, Befund) often Art. 9', 'Client SDKs with direct DB access (Supabase anon key → RLS is the only lock)', 'Analytics event payloads and URL parameters carrying treatment or Pflegegrad'] },
+    { t: 'Hop 1 · Edge / Middleware / CDN', checks: ['Where it runs: Edge Middleware and Workers are global; regions in vercel.json only pin Serverless Functions', 'Cookies the middleware sets (A/B, geo, redirect) → § 25 TDDDG', 'Geo/IP headers used or stored?', 'CDN log retention, log drains as extra processors', 'Image optimisation piping user uploads (EXIF GPS) through a third party'] },
+    { t: 'Hop 2 · API routes / Server Actions', checks: ['console.log(req.body) = PII in logs, often with Art. 9 content', 'Validation and rate limiting (Art. 32)', 'Forwarding: mailer, CRM, Slack webhook ("neue Anfrage, Pflegegrad 3" → Salesforce/US), Zapier, LLM API', 'Error handling: request bodies in Sentry (sendDefaultPii, breadcrumbs)', 'Session cookies httpOnly/secure/sameSite; social login scopes minimal'] },
+    { t: 'Hop 3 · Database / Storage', checks: ['Provider and region; encryption at rest; backups (region and retention — EU project with US backups is a transfer)', 'RLS on every PII table; service keys server-side only; buckets private', 'Deletion job exists and runs, not just described', 'Staging/preview with production PII', 'Auth tables (e-mail, last IP, login times) named in the DSE'] },
+    { t: 'Hop 4 · Third parties (server-side)', checks: ['Per processor: purpose, data, region, DPA signed and filed, sub-processors, DPF or SCC, retention', 'Transactional mail: open/click tracking off, content minimised, EU region', 'LLM APIs: DPA, no training, retention, region, Art. 22, Art. 50 labelling', 'CRM, booking, calendar sync and deletion; webhooks and automation chains as additional processors', 'Payment providers as independent controllers, still named'] },
+    { t: 'Hop 5 · Logs, monitoring, CI/CD', checks: ['Error tracking: PII scrubbing, EU region, replay only with consent', 'Log drains and IP retention ≤ 7 days or justified', 'CI logs without env dumps; .env never committed', 'Preview deployments protected and noindex', 'Public source maps as an Art. 32 note'] },
+    { t: 'Hop 6 · People and processes', checks: ['Who has access (hosting team, DB dashboard, CMS, inbox with requests); MFA; offboarding', 'Art. 15 request answered within a month, across all hops', 'Deletion reaches all hops including backups', '72-hour breach process (Art. 33)', 'VVT (Art. 30) and TOMs (Art. 32): one page is enough, zero is not'] }
+  ];
+  function showHop(i) {
+    $$('#dataflowSvg .hop').forEach(function (h) { h.classList.toggle('sel', +h.dataset.hop === i); });
+    $('#hopPanel').innerHTML = '<h3>' + HOPS[i].t + '</h3><ul>' + HOPS[i].checks.map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ul>';
+  }
+  $$('#dataflowSvg .hop').forEach(function (h) { h.addEventListener('click', function () { showHop(+h.dataset.hop); }); h.setAttribute('tabindex', '0'); h.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showHop(+h.dataset.hop); } }); });
+  showHop(0);
+  if (reduced) { var svg = $('#dataflowSvg'); if (svg.pauseAnimations) svg.pauseAnimations(); }
+
+  /* ---------- scanner demo ---------- */
+  var LINES = [
+    ['ph', '=== Runtime scan: http://127.0.0.1:8765/index.html (HTTP 200) ==='],
+    ['ph', '-- Vor Consent (3 Requests) --'],
+    ['r', '🔴 fonts.googleapis.com  → Google Fonts  [stylesheet] ×1'],
+    ['r', '🔴 www.googletagmanager.com  → Google Tag Manager  [script] ×1'],
+    ['dim', 'Cookies: session@127.0.0.1 session'],
+    ['dim', 'localStorage: [theme]  sessionStorage: []'],
+    ['ph', '-- Nach "Ablehnen" (Button: "Alle ablehnen") --'],
+    ['g', '✅ keine neuen Drittanbieter-Requests nach Ablehnen'],
+    ['dim', 'Cookies danach: session'],
+    ['ph', '-- Nach "Akzeptieren" (Button: "Alle akzeptieren") --'],
+    ['dim', '• fonts.googleapis.com → Google Fonts [stylesheet]'],
+    ['dim', '• www.googletagmanager.com → Google Tag Manager [script]'],
+    ['o', '• static.hotjar.com → Hotjar [script]'],
+    ['dim', 'Cookies danach: session@127.0.0.1 session; _hj@127.0.0.1 session'],
+    ['ph', '-- Pflichtseiten --'],
+    ['g', 'Impressum-Link: ✅ /impressum'],
+    ['g', 'Datenschutz-Link: ✅ /datenschutz'],
+    ['o', 'OS-Plattform-Link (seit 20.07.2025 abgeschaltet): 🟠 noch vorhanden → entfernen'],
+    ['dim', 'JSON: scan-127.0.0.1.json'],
+    ['dim', 'Hinweis: Ein Scan sieht eine Seite, einen Zustand, einen Zeitpunkt.']
+  ];
+  var LINES_ORDER = [
+    ['ph', '=== Runtime scan: http://127.0.0.1:8766/index.html (HTTP 200) ==='],
+    ['ph', '-- Vor Consent (1 Requests) --'],
+    ['g', '✅ keine Drittanbieter-Origins vor Consent (außer ggf. CMP)'],
+    ['dim', 'Cookies: keine'],
+    ['dim', 'localStorage: []  sessionStorage: []'],
+    ['ph', '-- Nach "Ablehnen" (Button: "Nur notwendige akzeptieren") --'],
+    ['g', '✅ keine neuen Drittanbieter-Requests nach Ablehnen'],
+    ['dim', 'Cookies danach: keine'],
+    ['ph', '-- Nach "Akzeptieren" (Button: "Alle akzeptieren") --'],
+    ['o', '• static.hotjar.com → Hotjar [script]'],
+    ['dim', 'Cookies danach: _hj@127.0.0.1 session'],
+    ['ph', '-- Pflichtseiten --'],
+    ['g', 'Impressum-Link: ✅ /impressum'],
+    ['g', 'Datenschutz-Link: ✅ /datenschutz'],
+    ['g', 'OS-Plattform-Link (seit 20.07.2025 abgeschaltet): ✅ nicht vorhanden'],
+    ['dim', 'JSON: scan-127.0.0.1.json'],
+    ['dim', 'Hinweis: der Accept-Schritt hat „Alle akzeptieren“ geklickt, nicht die Ablehnen-Variante davor.']
+  ];
+  var FIXTURES = { site: LINES, order: LINES_ORDER };
+  var fixture = 'site';
+  var term = $('#term'), running = false;
+  function renderTerm(instant) {
+    term.innerHTML = FIXTURES[fixture].map(function (l) { return '<div class="row ' + (l[0] === 'ph' ? 'ph' : l[0]) + '">' + l[1] + '</div>'; }).join('');
+    var rows = $$('.row', term);
+    if (instant) { rows.forEach(function (r) { r.classList.add('in'); }); return; }
+    running = true;
+    rows.forEach(function (r, i) { setTimeout(function () { r.classList.add('in'); if (i === rows.length - 1) running = false; }, 140 * i + (i > 1 && i < 6 ? 250 : 0) + (i >= 6 ? 600 : 0) + (i >= 9 ? 700 : 0) + (i >= 14 ? 500 : 0)); });
+  }
+  $('#runScan').addEventListener('click', function () { if (!running) renderTerm(reduced); });
+  $$('[data-fx]').forEach(function (b) { b.addEventListener('click', function () { if (running) return; fixture = b.dataset.fx; $$('[data-fx]').forEach(function (x) { x.classList.toggle('on', x === b); }); renderTerm(true); }); });
+  renderTerm(true);
+
+  /* ---------- verdicts toggle ---------- */
+  var FRAMES = {
+    law: { cls: '', head: '🔴 K-01 · Google Fonts werden zur Laufzeit von Google geladen', kind: 'Rechtslage', body: [
+      ['Befund', '<code>app/layout.tsx:12</code> bindet <code>&lt;link href="https://fonts.googleapis.com/…"&gt;</code> ein; Runtime-Scan: Requests an fonts.googleapis.com und fonts.gstatic.com vor jeder Consent-Interaktion.'],
+      ['Rechtsgrundlage', 'Übermittlung der IP-Adresse an Google ohne Rechtsgrundlage (Art. 6 Abs. 1 DSGVO), § 25 Abs. 1 TDDDG; LG München I, 3 O 17493/20.'],
+      ['Risiko', 'Schadensersatz-/Abmahnmuster „Google Fonts“, automatisiert erkennbar; Kontrollverlust-Logik (BGH VI ZR 10/24).'],
+      ['Maßnahme', 'Font self-hosten, <code>&lt;link&gt;</code> und <code>preconnect</code> entfernen, CSP <code>font-src \'self\'</code>.'],
+      ['Aufwand', 'S']] },
+    rule: { cls: 'rule', head: '🔴 K-04 · Terminanfrage mit Behandlungswunsch läuft über Calendly (US)', kind: 'Konservative Regel', body: [
+      ['Befund', 'Buchungs-Embed <code>calendly.com</code> auf <code>/termin</code>; Feld „Anliegen“ nimmt Behandlungswünsche entgegen (Art. 9).'],
+      ['Rechtsgrundlage', 'Art. 9 Abs. 2 lit. a DSGVO, Kap. V Drittlandtransfer. <b style="display:inline;text-transform:none;letter-spacing:0;font-family:inherit;color:var(--orange)">Konservative Regel:</b> kein US-Dienst im Art.-9-Datenpfad. Rechtlich wäre ein Transfer mit DPF-Zertifizierung + AVV + TIA + § 203-StGB-Absicherung möglich; der Dokumentationsaufwand steht für eine Praxis selten im Verhältnis.'],
+      ['Risiko', 'Bei fehlender Absicherung: unrechtmäßige Verarbeitung besonderer Kategorien, Reputationsschaden; mit Absicherung: Restrisiko, das eine anwaltliche Freigabe tragen kann.'],
+      ['Maßnahme', 'Cal.com self-hosted oder EU-Buchungstool; Freitextfeld ohne Behandlungsbezug. Alternativ: anwaltliche Freigabe der Ausnahme dokumentieren.'],
+      ['Aufwand', 'M']] }
+  };
+  function renderFrame(k) {
+    var f = FRAMES[k];
+    $('#finding').innerHTML = '<header class="' + f.cls + '"><span>' + f.head + '</span><span class="chip" style="margin-left:auto">' + f.kind + '</span></header><div class="body">' + f.body.map(function (b) { return '<div><b>' + b[0] + '</b>' + b[1] + '</div>'; }).join('') + '</div>';
+    $$('.toggle button[data-frame]').forEach(function (b) { b.classList.toggle('on', b.dataset.frame === k); });
+  }
+  $$('.toggle button[data-frame]').forEach(function (b) { b.addEventListener('click', function () { renderFrame(b.dataset.frame); }); });
+  renderFrame('law');
+
+  /* ---------- nav highlight ---------- */
+  var links = $$('.nav a[href^="#"]');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) links.forEach(function (a) { a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id); }); });
+    }, { rootMargin: '-40% 0px -55% 0px' });
+    $$('section[id]').forEach(function (s) { io.observe(s); });
+  }
+})();
+</script>
+</body></html>

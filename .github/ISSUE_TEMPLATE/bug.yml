@@ -1,0 +1,22 @@
+name: "Bug: scanner, scripts, or the skill misbehaving"
+description: Something technical is broken — the scanner, a grep, the packaging, or the skill produced a wrong audit.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [scan-origins.mjs, Phase 1 grep commands, SKILL.md workflow, packaging / CI, Claude Code plugin install, Claude.ai .skill upload]
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: What did you run / ask, and what happened?
+      description: Command or prompt, output, and what you expected. Redact client names and URLs if needed.
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "e.g. 1.0.0 (see .claude-plugin/plugin.json or the .skill file name)"

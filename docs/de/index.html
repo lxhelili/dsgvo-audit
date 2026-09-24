@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Wie der Claude-Skill dsgvo-audit aufgebaut ist und wie ein Audit abläuft: Evidenz, Datenfluss-Trace, Runtime-Scanner, Bewertungen, Versionierung, Evals.">
+<title>So funktioniert dsgvo-audit</title>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<style>
+  /* Self-hosted fonts (SIL OFL 1.1, see fonts/LICENSE.md) — the skill's own rule 2: nothing from a font CDN. */
+  @font-face { font-family: "Newsreader"; font-style: normal; font-weight: 200 800; font-stretch: 100%; font-display: swap; src: url("../fonts/newsreader-latin-opsz-normal.woff2") format("woff2-variations"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/ibm-plex-sans-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+</style>
+<style>
+  :root {
+    --bg: #F6F7F4;
+    --surface: #FFFFFF;
+    --surface-2: #EEF1EC;
+    --ink: #1B2430;
+    --muted: #5C6773;
+    --line: #D5DAD3;
+    --line-strong: #B8C0B7;
+    --accent: #0E5A8A;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E3EEF6;
+    --red: #C8321E;   --red-soft: #FBE9E6;
+    --orange: #D97706; --orange-soft: #FDF0DC;
+    --yellow: #B69300; --yellow-soft: #FBF5D6;
+    --green: #2E7D32;  --green-soft: #E4F2E5;
+    --grey: #7C868F;   --grey-soft: #ECEEF0;
+    --code-bg: #F0F2EE;
+    --shadow: 0 1px 2px rgba(27,36,48,.06), 0 8px 24px -12px rgba(27,36,48,.18);
+    --display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #14181C; --surface: #1B2128; --surface-2: #222A32;
+      --ink: #E6EAF0; --muted: #98A3B0; --line: #2A323B; --line-strong: #3A444F;
+      --accent: #5FB0E6; --accent-ink: #0B1720; --accent-soft: #17303F;
+      --red: #F0705C; --red-soft: #3A1F1B; --orange: #F2A23A; --orange-soft: #3A2A14;
+      --yellow: #E4C64A; --yellow-soft: #37311A; --green: #6CC46F; --green-soft: #1B3320;
+      --grey: #98A3B0; --grey-soft: #262E36; --code-bg: #10141A;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #14181C; --surface: #1B2128; --surface-2: #222A32;
+    --ink: #E6EAF0; --muted: #98A3B0; --line: #2A323B; --line-strong: #3A444F;
+    --accent: #5FB0E6; --accent-ink: #0B1720; --accent-soft: #17303F;
+    --red: #F0705C; --red-soft: #3A1F1B; --orange: #F2A23A; --orange-soft: #3A2A14;
+    --yellow: #E4C64A; --yellow-soft: #37311A; --green: #6CC46F; --green-soft: #1B3320;
+    --grey: #98A3B0; --grey-soft: #262E36; --code-bg: #10141A;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 0 64px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 500; line-height: 1.15; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); letter-spacing: -.01em; }
+  h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+  h3 { font-size: 1.2rem; font-weight: 600; }
+  p { margin: 0; max-width: 68ch; }
+  a { color: var(--accent); }
+  code, .mono { font-family: var(--mono); font-size: .88em; }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0; }
+  .eyebrow { font-family: var(--mono); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .lede { font-size: 1.12rem; max-width: 62ch; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* nav */
+  .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .nav-inner { max-width: 1040px; margin: 0 auto; padding: 10px 20px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .nav-inner::-webkit-scrollbar { display: none; }
+  .nav a { white-space: nowrap; text-decoration: none; color: var(--muted); font-size: .86rem; font-weight: 500; padding: 6px 10px; border-radius: 999px; border: 1px solid transparent; }
+  .nav a:hover, .nav a.active { color: var(--ink); background: var(--surface); border-color: var(--line); }
+  .nav a.lang { margin-left: auto; border-color: var(--line); color: var(--ink); }
+
+  /* hero */
+  .hero { padding-block: 56px 40px; display: grid; gap: 18px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: .76rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+  .pill b { color: var(--ink); font-weight: 500; }
+  .strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; }
+  .strip div { border-top: 3px solid var(--line-strong); padding-top: 8px; font-size: .82rem; }
+  .strip div b { display: block; font-family: var(--mono); font-size: .72rem; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+  .strip div:nth-child(1) { border-top-color: var(--accent); }
+  @media (max-width: 640px) { .strip { grid-template-columns: repeat(2, 1fr); } }
+
+  /* sections */
+  section { padding-block: 48px; border-top: 1px solid var(--line); scroll-margin-top: 64px; }
+  .sec-head { display: grid; gap: 10px; margin-bottom: 26px; }
+  .sec-head p { max-width: 66ch; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .grid-4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 760px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .grid-4 { grid-template-columns: 1fr; } }
+  .codes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .codes span { font-family: var(--mono); font-size: .8rem; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
+  .codes span b { font-weight: 600; margin-right: 6px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .card h3 { margin-bottom: 8px; }
+  .card p + p { margin-top: 8px; }
+  figure { margin: 0; display: grid; gap: 10px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .86rem; color: var(--muted); max-width: 70ch; }
+  .scroll-x { overflow-x: auto; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: .95rem; max-width: 76ch; }
+  .list { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+  .list li { max-width: 68ch; }
+  .kbd-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font: inherit; }
+  .btn { cursor: pointer; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); padding: 7px 14px; border-radius: 8px; font-weight: 500; font-size: .9rem; display: inline-flex; align-items: center; gap: 8px; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  /* anatomy */
+  .tree { font-family: var(--mono); font-size: .86rem; line-height: 1.7; overflow-x: auto; }
+  .tree button { all: unset; box-sizing: border-box; cursor: pointer; display: block; width: 100%; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+  .tree button:hover { background: var(--surface-2); }
+  .tree button.sel { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .tree .dir { color: var(--muted); padding: 2px 8px; }
+  .tree .ind1 { padding-left: 22px; } .tree .ind2 { padding-left: 40px; }
+  .file-panel { min-height: 240px; display: grid; gap: 12px; align-content: start; }
+  .file-panel .path { font-family: var(--mono); font-size: .9rem; color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: .76rem; font-family: var(--mono); padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: .9rem; }
+  .kv dt { color: var(--muted); font-family: var(--mono); font-size: .78rem; padding-top: 3px; }
+  .kv dd { margin: 0; }
+
+  /* stepper */
+  .stepper { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .step { all: unset; cursor: pointer; display: grid; gap: 4px; padding: 12px 12px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); position: relative; overflow: hidden; }
+  .step .n { font-family: var(--mono); font-size: .72rem; color: var(--muted); letter-spacing: .06em; }
+  .step .t { font-weight: 600; font-size: .95rem; }
+  .step .bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--accent); transition: width .25s linear; }
+  .step.on { border-color: var(--accent); }
+  .step.on .bar { width: 100%; }
+  .step.done .bar { width: 100%; background: var(--line-strong); }
+  @media (max-width: 760px) { .stepper { grid-template-columns: repeat(2, 1fr); } }
+  .phase-detail { margin-top: 16px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .phase-detail { grid-template-columns: 1fr; } }
+  .io { display: grid; gap: 10px; }
+  .io div { display: grid; gap: 3px; }
+  .io b { font-family: var(--mono); font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .io ul { margin: 0; padding-left: 1.1em; font-size: .92rem; display: grid; gap: 3px; }
+
+  /* dataflow */
+  .hop-panel { display: grid; gap: 8px; min-height: 120px; }
+  .hop-panel ul { margin: 0; padding-left: 1.1em; font-size: .92rem; display: grid; gap: 4px; }
+  svg .hop { cursor: pointer; }
+  svg .hop rect { fill: var(--surface); stroke: currentColor; stroke-width: 1.2; transition: fill .2s, stroke .2s; }
+  svg .hop.sel rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.8; }
+  svg .hop:hover rect { stroke: var(--accent); }
+  svg text { font-family: var(--sans); fill: currentColor; }
+  svg .mono { font-family: var(--mono); }
+  .flow { stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -22; } }
+  @media (prefers-reduced-motion: reduce) { .flow { animation: none; } .step .bar { transition: none; } }
+
+  /* scanner demo */
+  .term { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-family: var(--mono); font-size: .82rem; line-height: 1.6; min-height: 300px; }
+  .term .ph { color: var(--muted); margin-top: 8px; }
+  .term .ph:first-child { margin-top: 0; }
+  .term .row { opacity: 0; transform: translateY(3px); transition: opacity .3s, transform .3s; }
+  .term .row.in { opacity: 1; transform: none; }
+  .term .r { color: var(--red); } .term .o { color: var(--orange); } .term .g { color: var(--green); } .term .y { color: var(--yellow); }
+  .term .dim { color: var(--muted); }
+
+  /* verdicts */
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .dot.red { background: var(--red); } .dot.orange { background: var(--orange); } .dot.yellow { background: var(--yellow); } .dot.green { background: var(--green); } .dot.grey { background: var(--grey); border: 1px solid var(--line-strong); }
+  .toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+  .toggle button { all: unset; cursor: pointer; padding: 7px 14px; font-size: .88rem; font-weight: 500; color: var(--muted); }
+  .toggle button.on { background: var(--accent); color: var(--accent-ink); }
+  .finding { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .finding header { padding: 10px 14px; background: var(--red-soft); border-bottom: 1px solid var(--line); font-weight: 600; display: flex; gap: 10px; align-items: center; }
+  .finding header.rule { background: var(--orange-soft); }
+  .finding .body { padding: 12px 14px; display: grid; gap: 8px; font-size: .92rem; }
+  .finding .body b { font-family: var(--mono); font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; display: block; margin-bottom: 2px; }
+
+  /* versioning */
+  .sync { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sync div { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--surface); font-size: .84rem; }
+  .sync div code { display: block; margin-top: 4px; font-size: .8rem; }
+  @media (max-width: 640px) { .sync { grid-template-columns: repeat(2, 1fr); } }
+
+  footer { border-top: 1px solid var(--line); padding-block: 28px; font-size: .88rem; color: var(--muted); display: grid; gap: 8px; }
+</style>
+
+<nav class="nav" aria-label="Abschnitte">
+  <div class="nav-inner">
+    <a href="#anatomy">Aufbau</a>
+    <a href="#workflow">Ablauf</a>
+    <a href="#evidence">Evidenz</a>
+    <a href="#dataflow">Datenfluss</a>
+    <a href="#scanner">Scanner</a>
+    <a href="#verdicts">Bewertungen</a>
+    <a href="#versioning">Versionierung</a>
+    <a href="#evals">Evals</a>
+    <a href="#extend">Erweitern</a>
+    <a href="../" class="lang" hreflang="en" lang="en">English</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="hero-meta">
+    <span class="pill"><b>dsgvo-audit</b> v1.0.0</span>
+    <span class="pill">Rechtsstand <b>2026-09</b></span>
+    <span class="pill">DSGVO · TDDDG · DDG</span>
+    <span class="pill">MIT</span>
+  </div>
+  <h1>So funktioniert dsgvo-audit</h1>
+  <p class="lede">Ein Claude-Skill, der eine Website so prüft, wie ein sorgfältiger Code-Reviewer es täte: Er sammelt Belege, bevor er sich eine Meinung bildet, folgt jedem personenbezogenen Datum vom Browser bis zum letzten Drittanbieter, bewertet jeden Befund nach deutschem Datenschutzrecht und schreibt erst dann die Datenschutzerklärung. Diese Seite zeigt, wie das Paket aufgebaut ist und was in jedem Schritt passiert.</p>
+  <div class="strip" aria-label="Die fünf Phasen">
+    <div><b>1 · EVIDENZ</b>statischer Scan, Runtime-Scan, Datenfluss-Trace</div>
+    <div><b>2 · RÜCKFRAGEN</b>nur fragen, was der Code nicht verrät</div>
+    <div><b>3 · AUDIT</b>Prüfkatalog mit 11 Abschnitten, Ampelstatus</div>
+    <div><b>4 · BERICHT</b>Deutsch, Befunde mit § und Aufwand</div>
+    <div><b>5 · BEHEBUNG</b>Vorlagen, Gating, erneutes Audit</div>
+  </div>
+</header>
+
+<!-- ============================================================ ANATOMY -->
+<section id="anatomy">
+  <div class="sec-head">
+    <span class="eyebrow">01 · Aufbau</span>
+    <h2>Ein Skill, zehn Dateien, in Schichten geladen</h2>
+    <p>Claude liest nie das ganze Paket auf einmal. Die Description ist immer im Kontext und entscheidet, <em>ob</em> der Skill anspringt. SKILL.md wird geladen, wenn er es tut, und enthält den Ablauf. Alles andere holt sich erst die Phase, die es braucht — ein 100-KB-Paket kostet also nur wenige Kilobyte Kontext, bis das Audit tatsächlich beginnt. Klicke eine Datei an, um zu sehen, wann sie gelesen wird und von welcher Phase.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 900 190" role="img" aria-label="Drei Ladeschichten: Die Description ist immer im Kontext, SKILL.md lädt beim Auslösen, references, assets und scripts laden je Phase.">
+      <defs><marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="20" y="30" width="200" height="120" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="120" y="58" text-anchor="middle" font-weight="600">Schicht 0 · immer</text>
+        <text x="120" y="80" text-anchor="middle" class="mono" font-size="11">Description (~150 Wörter)</text>
+        <text x="120" y="104" text-anchor="middle" fill="var(--muted)">entscheidet das Auslösen</text>
+        <text x="120" y="122" text-anchor="middle" fill="var(--muted)">Scope: Review, Compliance-</text>
+        <text x="120" y="138" text-anchor="middle" fill="var(--muted)">Frage, neuer Drittdienst</text>
+
+        <line x1="222" y1="90" x2="278" y2="90" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrL)"/>
+        <text x="250" y="80" text-anchor="middle" font-size="10" fill="var(--muted)">löst aus</text>
+
+        <rect x="280" y="30" width="200" height="120" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="380" y="58" text-anchor="middle" font-weight="600">Schicht 1 · beim Auslösen</text>
+        <text x="380" y="80" text-anchor="middle" class="mono" font-size="11">SKILL.md (~170 Zeilen)</text>
+        <text x="380" y="104" text-anchor="middle" fill="var(--muted)">Haltung, fünf Phasen,</text>
+        <text x="380" y="122" text-anchor="middle" fill="var(--muted)">Berichtsformat, Deployment-</text>
+        <text x="380" y="138" text-anchor="middle" fill="var(--muted)">Regeln mit rechtlicher Nuance</text>
+
+        <line x1="482" y1="90" x2="538" y2="90" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrL)"/>
+        <text x="510" y="80" text-anchor="middle" font-size="10" fill="var(--muted)">je Phase</text>
+
+        <rect x="540" y="30" width="340" height="120" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="710" y="58" text-anchor="middle" font-weight="600">Schicht 2 · bei Bedarf</text>
+        <text x="710" y="80" text-anchor="middle" class="mono" font-size="11">references/ · assets/ · scripts/</text>
+        <text x="710" y="104" text-anchor="middle" fill="var(--muted)">gelesen, wenn eine Phase darauf zeigt;</text>
+        <text x="710" y="122" text-anchor="middle" fill="var(--muted)">der Scanner wird ausgeführt, nie gelesen;</text>
+        <text x="710" y="138" text-anchor="middle" fill="var(--muted)">Vorlagen nur in der Behebung</text>
+      </g>
+      <text x="450" y="178" text-anchor="middle" font-size="11" fill="var(--muted)">der Kontextverbrauch wächst nur mit dem Fortschritt des Audits</text>
+    </svg>
+    <figcaption>Progressives Laden: Der Teil, der immer präsent ist, ist klein und entscheidet das Auslösen; das schwere juristische Material kommt erst in den Kontext, wenn eine Phase es braucht.</figcaption>
+  </figure>
+
+  <div class="grid-2" style="margin-top: 28px;">
+    <div class="card tree" id="tree" aria-label="Dateibaum">
+      <div class="dir">skills/dsgvo-audit/</div>
+      <button data-f="skill" class="ind1 sel">SKILL.md</button>
+      <div class="dir ind1">references/</div>
+      <button data-f="checklist" class="ind2">checklist.md</button>
+      <button data-f="recht" class="ind2">recht.md</button>
+      <button data-f="services" class="ind2">services.md</button>
+      <button data-f="architecture" class="ind2">architecture.md</button>
+      <button data-f="patterns" class="ind2">patterns.md</button>
+      <div class="dir ind1">assets/</div>
+      <button data-f="dse" class="ind2">datenschutzerklaerung-template.md</button>
+      <button data-f="impressum" class="ind2">impressum-template.md</button>
+      <div class="dir ind1">scripts/</div>
+      <button data-f="scanner" class="ind2">scan-origins.mjs</button>
+      <div class="dir">agents/</div>
+      <button data-f="agent" class="ind1">dsgvo-auditor.md</button>
+    </div>
+    <div class="card file-panel" id="filePanel" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- ============================================================ WORKFLOW -->
+<section id="workflow">
+  <div class="sec-head">
+    <span class="eyebrow">02 · Ablauf</span>
+    <h2>Fünf Phasen, der Reihe nach, ohne Abkürzung</h2>
+    <p>Die Reihenfolge ist der Punkt. Eine Datenschutzerklärung, die geschrieben wird, bevor jemand weiß, was die Seite lädt, nennt Dienste, die es nicht gibt, und verschweigt die, die es gibt — das ist selbst ein Transparenzmangel nach Art. 5 Abs. 1 lit. a. Also zuerst Belege, dann Fragen, zuletzt die Erklärung. Klicke eine Phase an oder lass die Sequenz laufen.</p>
+  </div>
+  <div class="kbd-row" style="margin-bottom: 14px;">
+    <button class="btn primary" id="playBtn" aria-pressed="false">▶ Sequenz abspielen</button>
+    <span class="muted" style="font-size: .86rem;">Phase 5 läuft nur, wenn der Nutzer Korrekturen verlangt, nicht bei einem reinen Audit.</span>
+  </div>
+  <div class="stepper" id="stepper" role="tablist" aria-label="Phasen"></div>
+  <div class="phase-detail" id="phaseDetail"></div>
+</section>
+
+<!-- ============================================================ EVIDENCE -->
+<section id="evidence">
+  <div class="sec-head">
+    <span class="eyebrow">03 · Evidenz</span>
+    <h2>Vier Evidenzstufen — und der Bericht sagt, welche er hatte</h2>
+    <p>Was Claude sehen kann, hängt davon ab, was es bekommen hat. Jede Stufe tiefer verliert Sicht, und der Bericht nennt die erreichte Stufe, damit der Mandant weiß, was verifiziert und was geschlossen wurde. Der Skill weigert sich, aus einer Beschreibung allein eine generische Erklärung zu erzeugen; er stellt stattdessen die Rückfragen. Ein Scan, der die Seite nicht erreicht, liefert kein Urteil (Exit-Code 3) — der Bericht rutscht eine Stufe tiefer und sagt das; ein Netzwerkfehler wird nie als saubere Seite gelesen.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 900 300" role="img" aria-label="Evidenzleiter von Codebasis plus Runtime-Scan (sieht fast alles) bis Beschreibung allein (sieht nichts, stellt Fragen).">
+      <defs><marker id="arrE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <g>
+          <rect x="20" y="20" width="250" height="56" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="34" y="43" font-weight="600">1a · Codebasis + 1b · Runtime-Scan</text>
+          <text x="34" y="62" fill="var(--muted)" font-size="11">Deps, Quellcode, Config, Env-Namen; Live-Origins</text>
+          <rect x="290" y="30" width="590" height="36" rx="5" fill="var(--green-soft)"/>
+          <rect x="290" y="30" width="560" height="36" rx="5" fill="var(--green)" opacity=".85"/>
+          <text x="300" y="53" font-size="11" fill="var(--accent-ink)" font-weight="500">sieht: Drittanbieter-Origins, Storage, Handler, DB, Auftragsverarbeiter, Cookies inkl. Set-Cookie, was das CMP blockt</text>
+        </g>
+        <g>
+          <rect x="20" y="90" width="250" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="34" y="113" font-weight="600">1b · Nur Live-URL (Scanner)</text>
+          <text x="34" y="132" fill="var(--muted)" font-size="11">kein Repo — Browser-Tools als Fallback</text>
+          <rect x="290" y="100" width="590" height="36" rx="5" fill="var(--green-soft)"/>
+          <rect x="290" y="100" width="400" height="36" rx="5" fill="var(--green)" opacity=".7"/>
+          <text x="300" y="123" font-size="11" fill="var(--accent-ink)" font-weight="500">sieht die Browserseite vollständig · blind für Server-Handler, DB-Region, AVVs</text>
+        </g>
+        <g>
+          <rect x="20" y="160" width="250" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="34" y="183" font-weight="600">Nur HTML-Fetch</text>
+          <text x="34" y="202" fill="var(--muted)" font-size="11">script/iframe/preconnect-Tags, /impressum</text>
+          <rect x="290" y="170" width="590" height="36" rx="5" fill="var(--yellow-soft)"/>
+          <rect x="290" y="170" width="200" height="36" rx="5" fill="var(--yellow)" opacity=".8"/>
+          <text x="300" y="193" font-size="11" fill="var(--ink)" font-weight="500">nur statische Tags · übersieht zur Laufzeit injizierte Tags, Set-Cookie, CMP-Verhalten</text>
+        </g>
+        <g>
+          <rect x="20" y="230" width="250" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="34" y="253" font-weight="600">Nur Beschreibung</text>
+          <text x="34" y="272" fill="var(--muted)" font-size="11">„eine Next.js-Seite für eine Physiopraxis“</text>
+          <rect x="290" y="240" width="590" height="36" rx="5" fill="var(--red-soft)"/>
+          <text x="300" y="263" font-size="11" fill="var(--ink)" font-weight="500">sieht nichts → Rückfragen, nie eine generische Vorlage (Art. 5 Abs. 1 lit. a)</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>Die Evidenzleiter. Die Balken zeigen, wie viel vom Datenfluss jede Stufe verifizieren kann; das Management Summary des Berichts nennt die Stufe in einem Satz.</figcaption>
+  </figure>
+  <div class="grid-3" style="margin-top: 22px;">
+    <div class="card"><h3>Statischer Scan</h3><p>Zuerst Abhängigkeiten (<code>package.json</code> ist der schnellste, verlässlichste Beleg), dann Quellcode nach Drittanbieter-Origins und Endgerät-Storage, dann Serverseite nach Stellen, an denen PII die App verlässt, dann Config nach Regionen und Headern. Env-Dateien werden nur nach Schlüssel<em>namen</em> durchsucht; Werte gelangen nie in einen Bericht.</p></div>
+    <div class="card"><h3>Was grep nicht sieht</h3><p>Google Tag Manager ist eine Blackbox, bis Tags feuern — der Skill fordert deshalb den Container-Export an. Ein Fetch sieht keine Cookies, die API-Antworten setzen. Ein Sprachumschalter heißt: jede Sprache braucht ihre eigene DSE (Art. 12). Jeder dieser Punkte ist ein expliziter Schritt, keine Hoffnung.</p></div>
+    <div class="card"><h3>Je Datenfluss festgehalten</h3><p>Was (Daten) · woher (Origin, Land) · wann (vor oder nach Consent) · wozu (Zweck) · Rechtsgrundlage · welcher Vertrag (AVV, gemeinsame Verantwortlichkeit, keiner) · Speicherdauer. Sieben Felder, für jeden Fluss gefüllt, werden zur Datenfluss-Tabelle des Berichts.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ DATA FLOW -->
+<section id="dataflow">
+  <div class="sec-head">
+    <span class="eyebrow">04 · Datenfluss</span>
+    <h2>Ein Kontaktformular ist eine Pipeline mit vier Empfängern</h2>
+    <p>Frühere Entwürfe prüften die Seite. Der Skill prüft den Pfad. Personenbezogene Daten kommen im Browser an und wandern durch Edge-Code, API-Handler, eine Datenbank und eine Reihe von Drittanbietern, bevor sie in Logs und Backups landen. Jeder Hop ist eine Stelle, an der eine Rechtsgrundlage, ein Vertrag oder eine Speicherfrist fehlen kann. Klicke einen Hop an, um zu sehen, was dort geprüft wird.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="Datenflusskette: Browser, Edge und Middleware, API und Server Actions, Datenbank, Drittanbieter, Logs Monitoring und CI, Menschen und Prozesse, mit einem Paket, das entlangläuft." id="dataflowSvg">
+      <defs>
+        <marker id="arrD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <path id="dfPath" d="M 90 80 L 990 80" fill="none"/>
+      </defs>
+      <g font-size="12">
+        <line x1="90" y1="80" x2="920" y2="80" stroke="currentColor" stroke-width="1.2" class="flow" marker-end="url(#arrD)"/>
+        <g class="hop" data-hop="0" transform="translate(20,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Browser</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 0</text></g>
+        <g class="hop" data-hop="1" transform="translate(160,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Edge / MW</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 1</text></g>
+        <g class="hop" data-hop="2" transform="translate(300,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">API / Actions</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 2</text></g>
+        <g class="hop" data-hop="3" transform="translate(440,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Datenbank</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 3</text></g>
+        <g class="hop" data-hop="4" transform="translate(580,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Drittanbieter</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 4</text></g>
+        <g class="hop" data-hop="5" transform="translate(720,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Logs · CI</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 5</text></g>
+        <g class="hop" data-hop="6" transform="translate(860,52)"><rect width="120" height="56" rx="8"/><text x="60" y="24" text-anchor="middle" font-weight="600">Menschen</text><text x="60" y="42" text-anchor="middle" font-size="10.5" fill="var(--muted)">Hop 6</text></g>
+        <circle r="6" fill="var(--accent)" id="packet"><animateMotion dur="9s" repeatCount="indefinite" rotate="0"><mpath href="#dfPath"/></animateMotion></circle>
+        <text x="20" y="150" font-size="11" class="mono" fill="var(--muted)">Beispiel · Kontaktformular</text>
+        <text x="20" y="172" font-size="11.5">Name, E-Mail, Nachricht</text>
+        <text x="160" y="172" font-size="11.5">fra1 · kein Cookie</text>
+        <text x="300" y="172" font-size="11.5">sendContact()</text>
+        <text x="300" y="188" font-size="10.5" fill="var(--muted)">loggt Body? Rate-Limit?</text>
+        <text x="440" y="172" font-size="11.5">contact_requests</text>
+        <text x="440" y="188" font-size="10.5" fill="var(--muted)">eu-central-1 · RLS</text>
+        <text x="440" y="202" font-size="10.5" fill="var(--muted)">Lösch-Cron 6 Monate</text>
+        <text x="580" y="172" font-size="11.5">Resend (US) · Sentry</text>
+        <text x="580" y="188" font-size="10.5" fill="var(--muted)">AVV unterschrieben? Tracking aus?</text>
+        <text x="720" y="172" font-size="11.5">Vercel-Logs 30 T</text>
+        <text x="720" y="188" font-size="10.5" fill="var(--muted)">Log-Drain = Auftragsverarbeiter</text>
+        <text x="860" y="172" font-size="11.5">Postfach, Dashboard</text>
+        <text x="860" y="188" font-size="10.5" fill="var(--muted)">MFA · Art. 15 in 30 T</text>
+        <text x="20" y="232" font-size="11" fill="var(--muted)">ein Formular → Supabase, Resend, Sentry, Vercel-Logs: vier Empfänger, die die Datenschutzerklärung nennen muss (Art. 13 Abs. 1 lit. e), jeder mit eigenem AVV und eigener Speicherdauer</text>
+      </g>
+    </svg>
+    <figcaption>Die sieben Hops aus <code>references/architecture.md</code>. Der laufende Punkt ist eine Absendung des Kontaktformulars; die Zeile darunter zeigt, wie jeder Hop für dieses Formular aussieht und welche Frage das Audit dort stellt.</figcaption>
+  </figure>
+  <div class="card hop-panel" id="hopPanel" style="margin-top: 16px;" aria-live="polite"></div>
+</section>
+
+<!-- ============================================================ SCANNER -->
+<section id="scanner">
+  <div class="sec-head">
+    <span class="eyebrow">05 · Runtime-Scanner</span>
+    <h2>Drei Zustände derselben Seite</h2>
+    <p><code>scripts/scan-origins.mjs</code> öffnet die Seite in einem frischen Chromium-Profil und protokolliert, was der Browser tut, bevor jemand das Banner berührt. Dann klickt es „Ablehnen“ und prüft, ob etwas Neues lädt. Dann lädt es neu, klickt „Akzeptieren“ und inventarisiert alles, was die Seite laden kann — das ist die Liste, die die Datenschutzerklärung abdecken muss. In diesem letzten Schritt sucht es zuerst einen expliziten Alle-akzeptieren-Button und klickt nie eine Ablehnen-Variante wie „Nur notwendige akzeptieren“, damit das Inventar auch dann vollständig ist, wenn das Banner die Ablehnen-Option zuerst nennt. Spiele die Ausgabe auf einem der beiden Fixtures aus dem Repo ab.</p>
+  </div>
+  <div class="grid-2">
+    <figure>
+      <svg viewBox="0 0 460 330" role="img" aria-label="Scanner-Mechanik: frisches Profil lädt die Seite, protokolliert Requests Cookies und Storage, klickt Ablehnen und bildet die Differenz, lädt neu und klickt Akzeptieren für ein vollständiges Inventar, schreibt dann JSON und eine Zusammenfassung.">
+        <defs><marker id="arrS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+        <g font-size="11.5">
+          <rect x="20" y="16" width="420" height="40" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="230" y="34" text-anchor="middle" font-weight="600">frisches Chromium-Profil · de-DE · Europe/Berlin</text>
+          <text x="230" y="49" text-anchor="middle" font-size="10" fill="var(--muted)">keine Cookies, kein Storage, kein vorheriger Consent</text>
+          <line x1="230" y1="58" x2="230" y2="78" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+
+          <rect x="20" y="80" width="420" height="56" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="34" y="100" font-weight="600">A · laden + warten + scrollen → protokollieren</text>
+          <text x="34" y="117" font-size="10.5" fill="var(--muted)">Requests (Origin, Typ), Set-Cookie-Header, Cookies, local/sessionStorage</text>
+          <text x="34" y="130" font-size="10.5" fill="var(--muted)">Links: Impressum, Datenschutz, alter ODR-Link · GET /impressum, /datenschutz</text>
+          <line x1="230" y1="138" x2="230" y2="158" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+
+          <rect x="20" y="160" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="120" y="182" text-anchor="middle" font-weight="600">B · „Ablehnen“ klicken</text>
+          <text x="120" y="200" text-anchor="middle" font-size="10.5" fill="var(--muted)">DE/EN-Regex · Rollen zuerst</text>
+          <line x1="222" y1="188" x2="238" y2="188" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+          <rect x="240" y="160" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="340" y="182" text-anchor="middle" font-weight="600">Differenz zu A</text>
+          <text x="340" y="200" text-anchor="middle" font-size="10.5" fill="var(--muted)">neue Origins nach Ablehnen = 🔴</text>
+          <line x1="230" y1="218" x2="230" y2="238" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+
+          <rect x="20" y="240" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="120" y="262" text-anchor="middle" font-weight="600">C · neu laden, „Akzeptieren“</text>
+          <text x="120" y="280" text-anchor="middle" font-size="10.5" fill="var(--muted)">Alle-akzeptieren zuerst · nie Ablehnen-Treffer</text>
+          <line x1="222" y1="268" x2="238" y2="268" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrS)"/>
+          <rect x="240" y="240" width="200" height="56" rx="7" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="340" y="262" text-anchor="middle" font-weight="600">JSON + Zusammenfassung</text>
+          <text x="340" y="280" text-anchor="middle" font-size="10.5" fill="var(--muted)">--strict → Exit 1 · keine Seite → Exit 3</text>
+          <text x="230" y="320" text-anchor="middle" font-size="10.5" fill="var(--muted)">benannte blinde Flecken: GTM-Container-Inhalt, Unterseiten, Serverseite</text>
+        </g>
+      </svg>
+      <figcaption>Die drei Zustände des Scanners. Zustand A allein beantwortet die § 25-TDDDG-Frage; Zustand B erwischt CMPs, die eine Ablehnung ignorieren; Zustand C liefert die Dienstliste für Art. 13. Lädt die Seite nie, gibt es keinen Zustand A — der Scanner sagt das, statt ein leeres „bestanden“ auszugeben.</figcaption>
+    </figure>
+    <div>
+      <div class="kbd-row" style="margin-bottom: 10px;"><button class="btn primary" id="runScan">▶ Ausführen</button><div class="toggle" role="group" aria-label="Fixture"><button class="on" data-fx="site">tests/fixtures/site</button><button data-fx="order">site-accept-order</button></div></div>
+      <div class="term" id="term" aria-live="polite"></div>
+      <div class="codes" style="margin-top: 10px;" aria-label="Exit-Codes"><span><b>0</b>ok</span><span><b>1</b>--strict-Verstoß</span><span><b>2</b>Bedienfehler / kein Playwright</span><span><b>3</b>Seite nicht geladen, kein Urteil</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ VERDICTS -->
+<section id="verdicts">
+  <div class="sec-head">
+    <span class="eyebrow">06 · Bewertungen</span>
+    <h2>Fünf Status — und eine ehrliche Linie zwischen Gesetz und Regel</h2>
+    <p>Jeder Punkt des Prüfkatalogs bekommt einen von fünf Status. Einige Regeln des Skills sind strenger als das Gesetz verlangt, weil sich für eine kleine Praxis oder einen Pflegedienst der Dokumentationsaufwand des rechtmäßigen, aber komplizierten Wegs selten lohnt. Diese Regeln bleiben im Bericht 🔴, aber der Bericht sagt, dass sie die Regel der Agentur sind, nicht das Gesetz — damit Mandant und Anwalt entscheiden können. Schalte das Beispiel um, um den Unterschied in der Formulierung zu sehen.</p>
+  </div>
+  <div class="grid-2">
+    <div class="scroll-x">
+      <table>
+        <thead><tr><th>Status</th><th>Bedeutung</th><th>Beispiel</th></tr></thead>
+        <tbody>
+          <tr><td><span class="dot red"></span><b>Kritisch</b></td><td>Rechtswidrig mit Abmahn-, Bußgeld- oder Schadensersatzrisiko. Blockiert den Go-live.</td><td>GA feuert vor Consent · Google Fonts vom CDN · kein Impressum</td></tr>
+          <tr><td><span class="dot orange"></span><b>Hoch</b></td><td>Klarer Mangel, in diesem Sprint beheben.</td><td>Kein Ablehnen auf der ersten Ebene · fehlende Art.-13-Angaben · alter OS-Plattform-Link · PII in Logs</td></tr>
+          <tr><td><span class="dot yellow"></span><b>Mittel</b></td><td>Vertretbar, aber schwach — oder Verstoß gegen eine konservative Regel.</td><td>Vage Speicherfristen · kein VVT · US-Analytics mit Consent</td></tr>
+          <tr><td><span class="dot green"></span><b>OK</b></td><td>Konform.</td><td>Self-hosted Fonts · AVV abgelegt · EU-Region gepinnt</td></tr>
+          <tr><td><span class="dot grey"></span><b>Unklar</b></td><td>Braucht Mandanten-Input oder Runtime-Verifikation. Sagt genau, was.</td><td>GTM ohne Container-Export · DPF-Status einer Entität</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="kbd-row" style="margin-bottom: 12px;">
+        <div class="toggle" role="group" aria-label="Einordnung">
+          <button class="on" data-frame="law">Das Gesetz sagt</button>
+          <button data-frame="rule">Unsere Regel sagt</button>
+        </div>
+      </div>
+      <div class="finding" id="finding"></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top: 22px;"><b>Deployment-Regeln mit ihrer Nuance.</b> Kein Consent → keine Drittanbieter-Ausführung (Gesetz; Essentielles wie das CMP oder ein Payment-Iframe ist nach § 25 Abs. 2 Nr. 2 TDDDG ausgenommen). Fonts und CDN-Assets self-hosted (Gesetz; Consent würde es heilen, aber niemand willigt für eine Schrift ein). Berechtigtes Interesse heilt § 25 nicht (Gesetz). Art.-9-Daten → keine US-Dienste im Datenpfad (Regel). AVV vor Go-live (Gesetz). US-Transfers nennen ihren Mechanismus, DPF nur für die gelistete Entität (Gesetz). KI-APIs sind Auftragsverarbeiter und brauchen Kennzeichnung nach Art. 50 KI-VO (Gesetz). Nie eine Erklärung kopieren (Urheberrecht). Nie einen Befund abschwächen — aber immer sagen, welcher Art er ist.</p>
+</section>
+
+<!-- ============================================================ VERSIONING -->
+<section id="versioning">
+  <div class="sec-head">
+    <span class="eyebrow">07 · Versionierung &amp; Verteilung</span>
+    <h2>Ein Tag, zwei Zielgruppen</h2>
+    <p>Das Repo ist ein Claude-Code-Plugin. Ein gepushter Versions-Tag baut das <code>.skill</code>-Paket und veröffentlicht ein GitHub-Release: Claude-Code-Nutzer aktualisieren mit einem Befehl, Claude.ai- und Cowork-Nutzer laden eine Datei herunter. Jedes Release hält außerdem einen <em>Rechtsstand</em> fest — den Monat, bis zu dem die Rechtsquellen verifiziert wurden —, denn das Recht bewegt sich, und ein Compliance-Werkzeug muss sagen, wie alt sein Wissen ist.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 1000 230" role="img" aria-label="Release-Pipeline: Version bump, Changelog, git tag, Release-Workflow baut das .skill und veröffentlicht ein GitHub-Release; Claude-Code-Nutzer aktualisieren per plugin update, Claude.ai-Nutzer laden das .skill hoch.">
+      <defs><marker id="arrV" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="20" y="60" width="170" height="64" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="105" y="84" text-anchor="middle" font-weight="600">npm run version:bump</text>
+        <text x="105" y="102" text-anchor="middle" font-size="10" class="mono" fill="var(--muted)">1.1.0 --law-stand 2026-11</text>
+        <text x="105" y="116" text-anchor="middle" font-size="10.5" fill="var(--muted)">gleicht 4 Dateien + Stand ab</text>
+        <line x1="192" y1="92" x2="228" y2="92" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+
+        <rect x="230" y="60" width="150" height="64" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="305" y="84" text-anchor="middle" font-weight="600">CHANGELOG + Commit</text>
+        <text x="305" y="102" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">git tag v1.1.0</text>
+        <text x="305" y="116" text-anchor="middle" font-size="10.5" fill="var(--muted)">npm test muss grün sein</text>
+        <line x1="382" y1="92" x2="418" y2="92" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+
+        <rect x="420" y="60" width="170" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="505" y="84" text-anchor="middle" font-weight="600">release.yml</text>
+        <text x="505" y="102" text-anchor="middle" font-size="10.5" fill="var(--muted)">Tag == plugin.json-Version?</text>
+        <text x="505" y="116" text-anchor="middle" font-size="10.5" fill="var(--muted)">validate → package → release</text>
+
+        <line x1="592" y1="80" x2="648" y2="44" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+        <line x1="592" y1="104" x2="648" y2="140" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrV)"/>
+
+        <rect x="650" y="14" width="330" height="60" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="664" y="36" font-weight="600">Claude Code · Plugin-Marketplace</text>
+        <text x="664" y="54" font-size="10.5" class="mono" fill="var(--muted)">/plugin update dsgvo-audit@lxhelili</text>
+        <text x="664" y="67" font-size="10.5" fill="var(--muted)">Skill + Subagent, erkannt über die Version in plugin.json</text>
+
+        <rect x="650" y="110" width="330" height="60" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="664" y="132" font-weight="600">Claude.ai / Cowork · GitHub-Release</text>
+        <text x="664" y="150" font-size="10.5" class="mono" fill="var(--muted)">dsgvo-audit.skill  (Skill + Agent gebündelt)</text>
+        <text x="664" y="163" font-size="10.5" fill="var(--muted)">hochladen unter Einstellungen → Skills</text>
+
+        <text x="20" y="200" font-size="11" fill="var(--muted)">semver: major = Ablauf-/Berichts-/Urteilsänderungen · minor = neue Dienste, Punkte, Muster · patch = Korrekturen</text>
+        <text x="20" y="218" font-size="11" fill="var(--muted)">Rechtsstand ≠ Version: ein Patch kann den Stand bewegen; der Stand sagt dem Leser, wie alt das juristische Wissen ist</text>
+      </g>
+    </svg>
+    <figcaption>Vom Version-Bump zu beiden Zielgruppen. Der Tag muss der Version in <code>plugin.json</code> entsprechen, sonst verweigert der Workflow — und der Paketschritt lässt den Validator erneut laufen, damit nie ein kaputter Skill ausgeliefert wird.</figcaption>
+  </figure>
+  <h3 style="margin: 22px 0 10px;">Vier Stellen tragen die Version; ein Befehl hält sie gleich</h3>
+  <div class="sync">
+    <div><b>plugin.json</b><code>"version": "1.0.0"</code><span class="muted">was Claude Code vergleicht</span></div>
+    <div><b>marketplace.json</b><code>"version": "1.0.0"</code><span class="muted">Katalogeintrag</span></div>
+    <div><b>package.json</b><code>"version": "1.0.0"</code><span class="muted">Tooling</span></div>
+    <div><b>SKILL.md</b><code>metadata.version · law-stand</code><span class="muted">reist im .skill mit</span></div>
+  </div>
+  <p class="muted" style="margin-top: 10px; font-size: .9rem;"><code>npm run validate</code> schlägt fehl, wenn sie auseinanderlaufen, wenn dem CHANGELOG der Abschnitt fehlt, wenn <code>evals/evals.json</code> auf ein nicht existierendes Fixture zeigt oder wenn ein bekannter früherer Fehler wieder auftaucht (grep mit Klammer-Glob, § 7 Nr. 3 UWG, ein OS-Plattform-Link ohne Entfernungshinweis). Es warnt, wenn die Description näher als 40 Zeichen an die 1024-Zeichen-Grenze kommt.</p>
+</section>
+
+<!-- ============================================================ EVALS -->
+<section id="evals">
+  <div class="sec-head">
+    <span class="eyebrow">08 · Evals</span>
+    <h2>Tests belegen die Werkzeuge; Evals benoten den Prüfer</h2>
+    <p><code>npm test</code> zeigt, dass der grep-Block Treffer findet und der Scanner den richtigen Button klickt. Es sagt nichts darüber, ob ein mit dem Skill geschriebenes Audit gut ist: ob es den GA4-Tag im Layout findet, Formspree als regelbasiertes 🔴 statt als gesetzliches einstuft oder nach der Kammer fragt, statt eine zu erfinden. Evals messen das. Jedes ist ein erfundenes Fixture, ein Prompt, wie ein Entwickler ihn tippen würde, und eine Liste von Erwartungen, an denen ein fauler Durchlauf scheitert. Mit dem Skill und ohne ihn ausgeführt, ist die Differenz der Bestehensquote der Wert des Skills; gegen die Vorversion ausgeführt, ist die Differenz das, was eine Änderung bewirkt hat.</p>
+  </div>
+  <figure class="scroll-x">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="Eval-Schleife: Fixture und Prompt gehen in zwei Durchläufe, einen mit dem Skill und eine Baseline; beide Ausgaben werden von einem LLM-Grader gegen die Erwartungen und von einem Skript auf Struktur geprüft; die Bestehensquoten werden in einem Benchmark verglichen.">
+      <defs><marker id="arrQ" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="20" y="70" width="190" height="90" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="115" y="94" text-anchor="middle" font-weight="600">Eval</text>
+        <text x="115" y="112" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">evals/files/&lt;fixture&gt;</text>
+        <text x="115" y="128" text-anchor="middle" font-size="10.5" fill="var(--muted)">Prompt, wie ein Entwickler ihn tippt</text>
+        <text x="115" y="144" text-anchor="middle" font-size="10.5" fill="var(--muted)">8–11 Erwartungen</text>
+
+        <line x1="212" y1="100" x2="268" y2="58" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+        <line x1="212" y1="130" x2="268" y2="172" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+
+        <rect x="270" y="20" width="190" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="365" y="46" text-anchor="middle" font-weight="600">Durchlauf mit Skill</text>
+        <text x="365" y="66" text-anchor="middle" font-size="10.5" fill="var(--muted)">Subagent, Skill geladen</text>
+        <rect x="270" y="140" width="190" height="70" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="365" y="166" text-anchor="middle" font-weight="600">Baseline</text>
+        <text x="365" y="186" text-anchor="middle" font-size="10.5" fill="var(--muted)">ohne Skill oder mit der Vorversion</text>
+
+        <line x1="462" y1="55" x2="518" y2="95" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+        <line x1="462" y1="175" x2="518" y2="135" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+
+        <rect x="520" y="60" width="220" height="110" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="630" y="84" text-anchor="middle" font-weight="600">Bewertung</text>
+        <text x="630" y="104" text-anchor="middle" font-size="10.5" fill="var(--muted)">LLM-Grader: jede Erwartung</text>
+        <text x="630" y="118" text-anchor="middle" font-size="10.5" fill="var(--muted)">bestanden / nicht, mit Beleg</text>
+        <text x="630" y="140" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">grade-report.mjs: Struktur,</text>
+        <text x="630" y="154" text-anchor="middle" font-size="10.5" class="mono" fill="var(--muted)">RDG, Platzhalter, § 5 DDG</text>
+
+        <line x1="742" y1="115" x2="798" y2="115" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrQ)"/>
+
+        <rect x="800" y="60" width="180" height="110" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        <text x="890" y="84" text-anchor="middle" font-weight="600">Benchmark</text>
+        <text x="890" y="106" text-anchor="middle" font-size="11" class="mono">mit Skill   41 / 48</text>
+        <text x="890" y="124" text-anchor="middle" font-size="11" class="mono" fill="var(--muted)">Baseline   19 / 48</text>
+        <text x="890" y="148" text-anchor="middle" font-size="10.5" fill="var(--muted)">Quote · Zeit · Tokens</text>
+
+        <text x="500" y="238" text-anchor="middle" font-size="11" fill="var(--muted)">die Zahlen oben sind illustrativ, bis die erste Iteration gelaufen ist; die Form des Vergleichs ist der Punkt</text>
+      </g>
+    </svg>
+    <figcaption>Eine Iteration der Schleife von skill-creator. Dasselbe Fixture und derselbe Prompt laufen zweimal; ein Grader-Agent beurteilt die Substanz gegen die Erwartungen, ein Skript die Struktur, und der Benchmark stellt beide Konfigurationen nebeneinander.</figcaption>
+  </figure>
+
+  <h3 style="margin: 22px 0 10px;">Fünf Output-Evals, jedes gebaut, um eine Art von Fehler zu fangen</h3>
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th>Eval</th><th>Fixture</th><th>Was es fängt</th></tr></thead>
+      <tbody>
+        <tr><td><code>nextjs-ga-fonts-audit</code></td><td>Next.js: GA4 vor Consent, Google Fonts vom CDN, Kontakt-Route zu Resend + Sentry mit dem Body in <code>extra</code>, <code>regions: ["iad1"]</code>, alter ODR-Link</td><td>Evidenz zuerst, nur aus Code; der Hop-Trace (ein Formular, vier Empfänger); der Satz zur Evidenzstufe; nur Audit, wenn Audit verlangt war</td></tr>
+        <tr><td><code>static-site-runtime-scan</code></td><td>Statische Seite mit „Nur notwendige akzeptieren“ vor „Alle akzeptieren“</td><td>Dass der Scanner wirklich läuft und nicht durch HTML-Lesen ersetzt wird; dass die Ablehnen-Variante nicht für Akzeptieren gehalten wird; ein 404 hinter einem vorhandenen Impressum-Link ist 🔴</td></tr>
+        <tr><td><code>praxis-art9-intake</code></td><td>Buchungsseite einer ästhetischen Chirurgie: Behandlungs-Select, Textarea Beschwerden/Medikamente, Foto-Upload, Formspree, Calendly</td><td>Art. 9 an den Feldern erkannt; US-Dienste im Gesundheitspfad als regelbasiertes 🔴 mit Hinweis auf die anwaltliche Ausnahme; § 203 StGB, DSFA, DSB angesprochen; Rückfragen statt generischer Erklärung</td></tr>
+        <tr><td><code>astro-minimal-dse-generation</code></td><td>Astro bei Hetzner, @fontsource, Plausible, nodemailer ans eigene Postfach, vollständige <code>INTAKE.md</code></td><td>Moduldisziplin: nur, was die Evidenz trägt; Plausible auf Art. 6 Abs. 1 lit. f, nicht auf Consent; Fristen aus dem Intake; kein Platzhalter übrig; Art. 21 hervorgehoben; LDI NRW benannt</td></tr>
+        <tr><td><code>ai-chatbot-processor</code></td><td>OpenAI-Chat-Route mit Triage-System-Prompt, unbegrenzte <code>chat_logs</code> in Supabase, UI-Text „Unser Team antwortet sofort“</td><td>LLM als Auftragsverarbeiter (DPA, kein Training, Speicherdauer, Region); Kennzeichnung nach Art. 50 KI-VO; Art. 22 für die Triage; Steuereingaben als Art.-9-nah; „verifizieren“ für den DPF-Status</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid-3" style="margin-top: 22px;">
+    <div class="card"><h3>Trigger-Evals</h3><p>Zwanzig Prompts auf Deutsch und Englisch, zwölf, die den Skill öffnen sollen, und acht, die es nicht sollen (eine Supabase-Tabelle, ein Vercel-Build-Fehler, SPF für Resend). Sie testen allein die Description und schützen ihren letzten Satz — den, der gewöhnliche Entwicklungsarbeit nicht zum Audit werden lässt.</p></div>
+    <div class="card"><h3>Deterministischer Grader</h3><p><code>scripts/grade-report.mjs</code> prüft, was kein Urteilsvermögen braucht: acht Abschnitte in der richtigen Reihenfolge, jeder 🔴/🟠-Block mit Befund, Rechtsgrundlage, Risiko, Maßnahme und Aufwand, der RDG-Hinweis, kein „abmahnsicher“, kein übrig gebliebener Platzhalter, § 5 DDG statt TMG. Goldene und kaputte Fixtures halten den Grader selbst in der CI ehrlich.</p></div>
+    <div class="card"><h3>Wann laufen lassen</h3><p>Jede Änderung an SKILL.md, references oder Vorlagen: Output-Evals gegen die Vorversion. Jede Änderung an der Description: Trigger-Evals, drei Durchläufe je Prompt. Ein neuer Rechtsstand: Output-Evals — und eine neue Erwartung für jedes geänderte Urteil. Ein Release: alle drei, mit den Zahlen im Changelog.</p></div>
+  </div>
+  <p class="note" style="margin-top: 22px;"><b>Was Evals nicht sagen können.</b> Sie messen gegen die Fixtures und Erwartungen, die jemand geschrieben hat. Eine Rechtsposition, die in <code>recht.md</code> falsch ist und in einer Erwartung wiederholt wird, besteht mit voller Punktzahl. Die Primärquellen-Regel in CONTRIBUTING ist die Kontrolle der Erwartungen; die Evals kontrollieren, dass der Skill anwendet, was die Referenzen sagen.</p>
+</section>
+
+<!-- ============================================================ EXTEND -->
+<section id="extend">
+  <div class="sec-head">
+    <span class="eyebrow">09 · Erweitern</span>
+    <h2>Vier Arten von Beiträgen, jede mit einem Ort und einer Sicherung</h2>
+    <p>Die Teile, die viele Augen brauchen, sind die, die veralten: Dienst-Urteile, Rechtsquellen und Framework-Muster. Jeder hat eine Datei, in die er gehört, ein Issue-Template, das nach der nötigen Quelle fragt, und einen Test, der den wahrscheinlichsten Weg abfängt, ihn kaputt zu machen. Die vierte Art, ein Eval, ist die Art, wie eine Änderung an den anderen drei gemessen wird.</p>
+  </div>
+  <div class="grid-4">
+    <div class="card">
+      <h3>Rechtsupdate</h3>
+      <p>Ein Urteil, eine Gesetzesänderung, neue Behördenleitlinien. Gehört in <code>recht.md</code> — und in <code>checklist.md</code> oder <code>services.md</code>, wenn es ein Urteil ändert. Braucht eine Primärquelle mit Datum. Hebt den Rechtsstand an.</p>
+      <p class="muted" style="font-size: .86rem;">Sicherung: Validator lehnt bekannt veraltete Zitate ab; PR-Checkliste fragt nach der Quelle.</p>
+    </div>
+    <div class="card">
+      <h3>Dienst-Eintrag</h3>
+      <p>Eine Zeile in <code>services.md</code> (Consent? Rechtsgrundlage? Region? Urteil + Alternative), ein Origin-Regex in der <code>SIGNATURES</code>-Liste des Scanners, damit er beschriftet wird, und ein DSE-Modul, falls das generische nicht passt.</p>
+      <p class="muted" style="font-size: .86rem;">Sicherung: Scanner-Test belegt die Erkennung auf einer Fixture-Seite; Anbieter-Dokumentation Pflicht.</p>
+    </div>
+    <div class="card">
+      <h3>Muster</h3>
+      <p>Ein Consent-Gating- oder Self-Hosting-Beispiel für ein noch nicht abgedecktes Framework, unter den sieben generischen Prinzipien in <code>patterns.md</code>. Prinzipien bleiben framework-agnostisch; Beispiele illustrieren sie.</p>
+      <p class="muted" style="font-size: .86rem;">Sicherung: Es muss den Load gaten, nicht die Nutzung; die Anti-Pattern-Liste ist die Checkliste.</p>
+    </div>
+    <div class="card">
+      <h3>Eval</h3>
+      <p>Ein kleines erfundenes Fixture mit jedem Signal an seinem Platz, ein Prompt, wie ein Entwickler ihn tippen würde, und 8–11 Erwartungen in <code>evals/evals.json</code>, an denen ein fauler Durchlauf scheitert. Ein neues Urteil oder eine neue Rechtsposition bekommt eines, damit eine Regression sichtbar würde.</p>
+      <p class="muted" style="font-size: .86rem;">Sicherung: Validator prüft, dass Fixtures existieren und IDs eindeutig sind; der Durchlauf vergleicht mit der Vorversion.</p>
+    </div>
+  </div>
+  <h3 style="margin: 26px 0 10px;">Was <code>npm test</code> ausführt</h3>
+  <div class="scroll-x">
+    <table>
+      <thead><tr><th>Prüfung</th><th>Was sie schützt</th><th>Wie</th></tr></thead>
+      <tbody>
+        <tr><td><code>validate.mjs</code></td><td>Paketintegrität, Versionsabgleich, Frontmatter, tote Verweise, Agent-Definition, Eval-Definitionen</td><td>Statische Prüfungen, keine Abhängigkeiten</td></tr>
+        <tr><td><code>phase1.test.sh</code></td><td>Die Phase-1-Befehle finden tatsächlich etwas</td><td>Extrahiert den echten Bash-Block aus SKILL.md, lässt ihn auf einem Fixture-Repo laufen, prüft Treffer und dass kein Secret-Wert ausgegeben wird</td></tr>
+        <tr><td><code>grade-report.test.mjs</code></td><td>Der deterministische Grader selbst</td><td>Akzeptiert den goldenen Bericht, die DSE und das Impressum; weist den kaputten Bericht aus sieben benannten Gründen zurück</td></tr>
+        <tr><td><code>scanner.test.mjs</code></td><td>Der Runtime-Scanner Ende-zu-Ende</td><td>Drei Fälle: die nicht konforme Seite (Origins vor Consent, Ablehnen-Differenz, Akzeptieren-Inventar, alter ODR-Link), das Banner mit der Ablehnen-Option zuerst und eine unerreichbare URL, die mit Exit 3 ohne Urteil enden muss</td></tr>
+        <tr><td><code>package</code></td><td>Das <code>.skill</code> ist baubar und validiert</td><td>Läuft in der CI bei jedem Push; Artefakt 14 Tage aufbewahrt</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <div><b>Keine Rechtsberatung.</b> Der Skill erstellt technisch-organisatorische Compliance-Prüfungen, keine Rechtsberatung im Sinne des RDG. Jedes Dokument, das er schreibt, endet mit diesem Hinweis, und eine Anwältin, ein Anwalt oder die/der Datenschutzbeauftragte des Mandanten gibt vor dem Go-live frei.</div>
+  <div>MIT · <a href="https://github.com/lxhelili/dsgvo-audit">github.com/lxhelili/dsgvo-audit</a> · Rechtsstand 2026-09 · <a href="../" hreflang="en" lang="en">English version</a></div>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- anatomy ---------- */
+  var FILES = {
+    skill: { path: 'skills/dsgvo-audit/SKILL.md', size: '~170 Zeilen', when: 'Beim Auslösen — die einzige Datei, die immer gelesen wird, sobald der Skill anspringt.', phases: [1,2,3,4,5], what: 'Haltung (Analyst, kein Anwalt), die fünf Phasen, die Berichtsstruktur mit einem ausgearbeiteten Befund, die Deployment-Regeln mit ihrer rechtlichen Nuance und die Liste der Dateien mit dem Zeitpunkt, wann sie zu öffnen sind.', why: 'Unter 200 Zeilen gehalten, damit das Modell sie ganz liest. Details stehen in den references.' },
+    checklist: { path: 'references/checklist.md', size: '11 Abschnitte · ~110 Punkte', when: 'Phase 3, von oben nach unten abgearbeitet.', phases: [3], what: 'Impressum, Art. 13, § 25 TDDDG Consent, Auftragsverarbeiter und Transfers, Backend-Datenfluss, Formulare, KI-Funktionen, Art. 9, organisatorische Pflichten, Technik, angrenzende Pflichten zum Flaggen.', why: 'Jeder Punkt nennt die Norm und markiert konservative Regeln mit (R), damit der Status sagen kann, welcher Art der Befund ist.' },
+    recht: { path: 'references/recht.md', size: '~95 Zeilen · Stand 2026-09', when: 'Phase 3 für Zitate; Phase 4 für den RDG-Text.', phases: [3,4], what: 'Normen-Landkarte, Art.-6-Grundlagen, Art. 9, DSB- und DSFA-Auslöser, Drittlandtransfer mit DPF-Status, Liste der Leitentscheidungen, Bußgelder, die Regel-vs-Recht-Formulierungstabelle, der RDG-Hinweis.', why: 'Trägt ein Verifikationsdatum und weist das Modell an, alles Zeitkritische per Websuche zu prüfen, statt der Datei zu vertrauen.' },
+    services: { path: 'references/services.md', size: '~50 Dienste in 6 Tabellen', when: 'Phase 3, je in Phase 1 gefundenem Drittanbieter.', phases: [3], what: 'Consent nötig? DSGVO-Grundlage, Region, Urteil und sicherere Alternative für Fonts, Analytics, Captchas, Embeds, Hosting, Mail, Payment, CRM — und ein KI/LLM-API-Modul.', why: 'Die Urteilsspalte erklärt sich selbst; (R) markiert Regeln, die über das Gesetz hinausgehen.' },
+    architecture: { path: 'references/architecture.md', size: '7 Hops + Framework-Tabelle', when: 'Phase 1, nach dem statischen Scan.', phases: [1,4], what: 'Was an jedem Hop vom Browser bis zu Menschen und Prozessen zu prüfen ist, die Datenfluss-Tabelle für den Bericht und wo die Handler je Framework liegen.', why: 'Macht aus „das Formular prüfen“ ein „dem Formular durch sechs Systeme folgen“.' },
+    patterns: { path: 'references/patterns.md', size: '7 Prinzipien + Beispiele', when: 'Nur Phase 5.', phases: [5], what: 'Framework-agnostische Gating-Prinzipien, dann Beispiele für plain HTML, Next.js, Angular, Astro, WordPress; Consent Mode, Zwei-Klick-Embeds, Region-Pinning, Security-Header.', why: 'Prinzipien zuerst, damit ein nicht gelisteter Stack trotzdem abgedeckt ist.' },
+    dse: { path: 'assets/datenschutzerklaerung-template.md', size: '20 Abschnitte, modular', when: 'Nur Phase 5.', phases: [5], what: 'Deutsche Erklärungsvorlage mit Modulen für Hosting, Cookies, Kontakt, Buchung, Konten und Social Login, Zahlung, Newsletter, Bewerbungen, KI-Funktionen, Blöcke je Dienst, Rechte, Sicherheit.', why: 'Module werden gelöscht, wenn die Evidenz den Dienst nicht zeigt; [PLATZHALTER] wird gefüllt oder aufgelistet, nie ausgeliefert.' },
+    impressum: { path: 'assets/impressum-template.md', size: '§ 5 DDG + Varianten', when: 'Nur Phase 5.', phases: [5], what: 'Impressum mit Modulen für reglementierte Berufe, erlaubnispflichtige Tätigkeiten (Pflegedienst), redaktionelle Inhalte, VSBG-Hinweis. Kein OS-Plattform-Link seit 20.07.2025.', why: 'Prüfhinweise am Ende verhindern die klassischen Copy-Paste-Fehler.' },
+    scanner: { path: 'scripts/scan-origins.mjs', size: '~310 Zeilen, Playwright', when: 'Phase 1b — wird ausgeführt, nie in den Kontext gelesen.', phases: [1,5], what: 'Aufzeichnung vor Consent, Ablehnen-Differenz, Akzeptieren-Inventar (Alle-akzeptieren zuerst, nie ein Ablehnen-Treffer), Pflichtseiten-Check, JSON + Zusammenfassung; Exit 1 bei --strict-Verstößen, Exit 3 ohne Urteil, wenn die Seite nicht geladen werden kann.', why: 'Ein Fetch sieht keine Laufzeit-Tags und keine Set-Cookie-Header; ein echter Browser schon. Ein fehlgeschlagener Load darf nie wie eine saubere Seite aussehen.' },
+    agent: { path: 'agents/dsgvo-auditor.md', size: 'Claude-Code-Subagent', when: 'Separat, wenn als Subagent aufgerufen oder proaktiv vor Deploys.', phases: [1,2,3,4,5], what: 'Analysten-Identität, lädt den Skill über das Skill-Tool, Zusammenfassung des Ablaufs, Linien, die er nie überschreitet.', why: 'Lässt das Audit in einem eigenen Kontextfenster laufen, getrennt von der Coding-Session.' }
+  };
+  var PHASE_NAMES = ['Evidenz','Rückfragen','Audit','Bericht','Behebung'];
+  function renderFile(key) {
+    var f = FILES[key]; var p = $('#filePanel');
+    p.innerHTML = '<div class="path">' + f.path + '</div>' +
+      '<div class="chips">' + PHASE_NAMES.map(function (n, i) { return '<span class="chip' + (f.phases.indexOf(i+1) >= 0 ? ' on' : '') + '">' + (i+1) + ' ' + n + '</span>'; }).join('') + '</div>' +
+      '<dl class="kv"><dt>Umfang</dt><dd>' + f.size + '</dd><dt>geladen</dt><dd>' + f.when + '</dd><dt>enthält</dt><dd>' + f.what + '</dd><dt>warum</dt><dd>' + f.why + '</dd></dl>';
+    $$('#tree button').forEach(function (b) { b.classList.toggle('sel', b.dataset.f === key); });
+  }
+  $$('#tree button').forEach(function (b) { b.addEventListener('click', function () { renderFile(b.dataset.f); }); });
+  renderFile('skill');
+
+  /* ---------- workflow ---------- */
+  var PHASES = [
+    { n: 'Phase 1', t: 'Evidenz', tag: 'nie raten', reads: ['architecture.md', 'scan-origins.mjs'], inputs: ['Repo, Live-URL oder nur eine Beschreibung'], does: ['Statischer Scan: Abhängigkeiten → Origins im Quellcode → Endgerät-Storage → serverseitige Handler → Config und Env-Schlüsselnamen', 'Runtime-Scan auf der Live-URL, Unterseiten separat; Exit-Code 3 heißt kein Urteil → Browser-Tools, HTML-Fetch oder eine HAR als Fallback, und der Bericht sagt, welche Stufe erreicht wurde', 'Datenfluss-Trace Hop für Hop', 'GTM erkannt → Container-Export anfordern', 'Sprachumschalter → jede Sprache braucht ihre eigene DSE'], out: ['Evidenztabelle: was · wo · wann · wozu · Grundlage · Vertrag · Speicherdauer', 'Evidenzstufe für den Bericht festgehalten'] },
+    { n: 'Phase 2', t: 'Rückfragen', tag: 'nur fragen, was der Code nicht verrät', reads: [], inputs: ['Lücken, die Phase 1 gelassen hat'], does: ['Ein Fragenpaket: Verantwortlicher, Register, reglementierter Beruf, DSB, AVVs unterschrieben, Art.-9-Eingaben, Newsletter/Konten/Zahlungen/KI-Funktionen, ≤ 10 Beschäftigte'], out: ['Faktenblatt für Impressum und DSE', 'Liste offener Fragen für den Bericht'] },
+    { n: 'Phase 3', t: 'Audit', tag: 'jeder Punkt, ein Status', reads: ['checklist.md', 'services.md', 'recht.md'], inputs: ['Evidenztabelle + Faktenblatt'], does: ['Alle 11 Abschnitte des Prüfkatalogs durchgehen', 'Je Drittanbieter: Urteil aus services.md', 'Websuche für alles Zeitkritische: DPF-Listeneintrag, Positivlisten, neue Urteile, Stand des Digital Omnibus', 'Konservative Regeln als solche markieren'], out: ['Status je Punkt mit Norm und Fundstelle'] },
+    { n: 'Phase 4', t: 'Bericht', tag: 'deutsch, strukturiert, ehrlich', reads: ['recht.md (RDG-Text)'], inputs: ['Status + Evidenz'], does: ['Management Summary mit Ampel und Evidenzstufe', 'Ein Block je 🔴/🟠-Befund: Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand (S/M/L)', 'Datenfluss-Tabelle, vollständige Prüftabelle, Auftragsverarbeiter-Tabelle', 'Maßnahmenplan mit Verantwortlichen, offene Fragen, RDG-Hinweis'], out: ['datenschutz-audit-<domain>-<datum>.md (HTML/PDF auf Wunsch)'] },
+    { n: 'Phase 5', t: 'Behebung', tag: 'nur auf Anfrage', reads: ['patterns.md', 'datenschutzerklaerung-template.md', 'impressum-template.md', 'scan-origins.mjs'], inputs: ['Der Auftrag, zu beheben — nicht nur zu prüfen'], does: ['DSE aus der modularen Vorlage: Module ohne Evidenz löschen, jeden Platzhalter füllen', 'Impressum aus der Vorlage', 'Consent-Gating: den Load gaten, nicht die Nutzung', 'Banner-Regeln: Ablehnen auf der ersten Ebene, keine Dark Patterns, Widerruf so einfach wie Einwilligung', 'Phase 3 und den Scanner auf der eigenen Ausgabe erneut laufen lassen'], out: ['Erklärung, Impressum, gegateter Code — durch einen zweiten Scan verifiziert'] }
+  ];
+  var cur = 0, timer = null;
+  var stepper = $('#stepper');
+  stepper.innerHTML = PHASES.map(function (p, i) { return '<button class="step" role="tab" data-i="' + i + '"><span class="n">' + p.n.toUpperCase() + '</span><span class="t">' + p.t + '</span><span class="muted" style="font-size:.8rem">' + p.tag + '</span><span class="bar"></span></button>'; }).join('');
+  function showPhase(i) {
+    cur = i;
+    $$('.step').forEach(function (s, k) { s.classList.toggle('on', k === i); s.classList.toggle('done', k < i); s.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+    var p = PHASES[i];
+    $('#phaseDetail').innerHTML =
+      '<div class="card"><h3>' + p.n + ' · ' + p.t + '</h3><div class="io"><div><b>tut</b><ul>' + p.does.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div></div></div>' +
+      '<div class="card"><div class="io"><div><b>Eingabe</b><ul>' + p.inputs.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div><div><b>Ausgabe</b><ul>' + p.out.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul></div><div><b>liest</b><div class="chips">' + (p.reads.length ? p.reads.map(function (r) { return '<span class="chip on">' + r + '</span>'; }).join('') : '<span class="chip">nichts Neues — nur SKILL.md</span>') + '</div></div></div></div>';
+  }
+  $$('.step').forEach(function (s) { s.addEventListener('click', function () { stopPlay(); showPhase(+s.dataset.i); }); });
+  function stopPlay() { if (timer) { clearInterval(timer); timer = null; } $('#playBtn').textContent = '▶ Sequenz abspielen'; $('#playBtn').setAttribute('aria-pressed', 'false'); }
+  $('#playBtn').addEventListener('click', function () {
+    if (timer) { stopPlay(); return; }
+    showPhase(0); this.textContent = '⏸ Pause'; this.setAttribute('aria-pressed', 'true');
+    timer = setInterval(function () { if (cur >= 4) { stopPlay(); return; } showPhase(cur + 1); }, reduced ? 4000 : 2600);
+  });
+  showPhase(0);
+
+  /* ---------- data flow ---------- */
+  var HOPS = [
+    { t: 'Hop 0 · Browser', checks: ['Fremde Origins vor Consent (Scanner), Fonts, Icon-Kits, CDN, CMP-Host, preconnect/dns-prefetch', 'Cookies, localStorage, sessionStorage, IndexedDB', 'Formularfelder: jedes begründbar (Art. 5 Abs. 1 lit. c); Hidden Fields mit UTM/gclid; File-Uploads (Lebenslauf, Befund) oft Art. 9', 'Client-SDKs mit direktem DB-Zugriff (Supabase anon key → RLS ist die einzige Sicherung)', 'Analytics-Event-Payloads und URL-Parameter, die Behandlung oder Pflegegrad tragen'] },
+    { t: 'Hop 1 · Edge / Middleware / CDN', checks: ['Wo es läuft: Edge Middleware und Workers sind global; regions in vercel.json pinnt nur Serverless Functions', 'Cookies, die die Middleware setzt (A/B, Geo, Redirect) → § 25 TDDDG', 'Geo-/IP-Header genutzt oder gespeichert?', 'CDN-Log-Retention, Log-Drains als zusätzliche Auftragsverarbeiter', 'Bildoptimierung, die Nutzer-Uploads (EXIF-GPS) durch einen Dritten schleust'] },
+    { t: 'Hop 2 · API-Routen / Server Actions', checks: ['console.log(req.body) = PII in Logs, oft mit Art.-9-Inhalt', 'Validierung und Rate-Limiting (Art. 32)', 'Weiterleitung: Mailer, CRM, Slack-Webhook („neue Anfrage, Pflegegrad 3“ → Salesforce/US), Zapier, LLM-API', 'Fehlerbehandlung: Request-Bodies in Sentry (sendDefaultPii, Breadcrumbs)', 'Session-Cookies httpOnly/secure/sameSite; Social-Login-Scopes minimal'] },
+    { t: 'Hop 3 · Datenbank / Storage', checks: ['Anbieter und Region; Verschlüsselung at rest; Backups (Region und Retention — ein EU-Projekt mit US-Backups ist ein Transfer)', 'RLS auf jeder PII-Tabelle; Service-Keys nur serverseitig; Buckets privat', 'Löschjob existiert und läuft — nicht nur beschrieben', 'Staging/Preview mit Produktions-PII', 'Auth-Tabellen (E-Mail, letzte IP, Login-Zeiten) in der DSE genannt'] },
+    { t: 'Hop 4 · Drittanbieter (serverseitig)', checks: ['Je Auftragsverarbeiter: Zweck, Daten, Region, DPA unterschrieben und abgelegt, Unterauftragsverarbeiter, DPF oder SCC, Speicherdauer', 'Transaktionsmail: Open-/Click-Tracking aus, Inhalt minimiert, EU-Region', 'LLM-APIs: DPA, kein Training, Speicherdauer, Region, Art. 22, Kennzeichnung nach Art. 50', 'CRM, Buchung, Kalender-Sync und Löschung; Webhooks und Automatisierungsketten als weitere Auftragsverarbeiter', 'Zahlungsanbieter als eigene Verantwortliche — trotzdem genannt'] },
+    { t: 'Hop 5 · Logs, Monitoring, CI/CD', checks: ['Error-Tracking: PII-Scrubbing, EU-Region, Replay nur mit Consent', 'Log-Drains und IP-Speicherung ≤ 7 Tage oder begründet', 'CI-Logs ohne Env-Dumps; .env nie committet', 'Preview-Deployments geschützt und noindex', 'Öffentliche Source Maps als Art.-32-Hinweis'] },
+    { t: 'Hop 6 · Menschen und Prozesse', checks: ['Wer hat Zugriff (Hosting-Team, DB-Dashboard, CMS, Postfach mit Anfragen); MFA; Offboarding', 'Art.-15-Anfrage innerhalb eines Monats beantwortet — über alle Hops', 'Löschung greift in allen Hops inklusive Backups', '72-Stunden-Meldeprozess (Art. 33)', 'VVT (Art. 30) und TOMs (Art. 32): eine Seite reicht, null Seiten nicht'] }
+  ];
+  function showHop(i) {
+    $$('#dataflowSvg .hop').forEach(function (h) { h.classList.toggle('sel', +h.dataset.hop === i); });
+    $('#hopPanel').innerHTML = '<h3>' + HOPS[i].t + '</h3><ul>' + HOPS[i].checks.map(function (c) { return '<li>' + c + '</li>'; }).join('') + '</ul>';
+  }
+  $$('#dataflowSvg .hop').forEach(function (h) { h.addEventListener('click', function () { showHop(+h.dataset.hop); }); h.setAttribute('tabindex', '0'); h.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showHop(+h.dataset.hop); } }); });
+  showHop(0);
+  if (reduced) { var svg = $('#dataflowSvg'); if (svg.pauseAnimations) svg.pauseAnimations(); }
+
+  /* ---------- scanner demo ---------- */
+  var LINES = [
+    ['ph', '=== Runtime scan: http://127.0.0.1:8765/index.html (HTTP 200) ==='],
+    ['ph', '-- Vor Consent (3 Requests) --'],
+    ['r', '🔴 fonts.googleapis.com  → Google Fonts  [stylesheet] ×1'],
+    ['r', '🔴 www.googletagmanager.com  → Google Tag Manager  [script] ×1'],
+    ['dim', 'Cookies: session@127.0.0.1 session'],
+    ['dim', 'localStorage: [theme]  sessionStorage: []'],
+    ['ph', '-- Nach "Ablehnen" (Button: "Alle ablehnen") --'],
+    ['g', '✅ keine neuen Drittanbieter-Requests nach Ablehnen'],
+    ['dim', 'Cookies danach: session'],
+    ['ph', '-- Nach "Akzeptieren" (Button: "Alle akzeptieren") --'],
+    ['dim', '• fonts.googleapis.com → Google Fonts [stylesheet]'],
+    ['dim', '• www.googletagmanager.com → Google Tag Manager [script]'],
+    ['o', '• static.hotjar.com → Hotjar [script]'],
+    ['dim', 'Cookies danach: session@127.0.0.1 session; _hj@127.0.0.1 session'],
+    ['ph', '-- Pflichtseiten --'],
+    ['g', 'Impressum-Link: ✅ /impressum'],
+    ['g', 'Datenschutz-Link: ✅ /datenschutz'],
+    ['o', 'OS-Plattform-Link (seit 20.07.2025 abgeschaltet): 🟠 noch vorhanden → entfernen'],
+    ['dim', 'JSON: scan-127.0.0.1.json'],
+    ['dim', 'Hinweis: Ein Scan sieht eine Seite, einen Zustand, einen Zeitpunkt.']
+  ];
+  var LINES_ORDER = [
+    ['ph', '=== Runtime scan: http://127.0.0.1:8766/index.html (HTTP 200) ==='],
+    ['ph', '-- Vor Consent (1 Requests) --'],
+    ['g', '✅ keine Drittanbieter-Origins vor Consent (außer ggf. CMP)'],
+    ['dim', 'Cookies: keine'],
+    ['dim', 'localStorage: []  sessionStorage: []'],
+    ['ph', '-- Nach "Ablehnen" (Button: "Nur notwendige akzeptieren") --'],
+    ['g', '✅ keine neuen Drittanbieter-Requests nach Ablehnen'],
+    ['dim', 'Cookies danach: keine'],
+    ['ph', '-- Nach "Akzeptieren" (Button: "Alle akzeptieren") --'],
+    ['o', '• static.hotjar.com → Hotjar [script]'],
+    ['dim', 'Cookies danach: _hj@127.0.0.1 session'],
+    ['ph', '-- Pflichtseiten --'],
+    ['g', 'Impressum-Link: ✅ /impressum'],
+    ['g', 'Datenschutz-Link: ✅ /datenschutz'],
+    ['g', 'OS-Plattform-Link (seit 20.07.2025 abgeschaltet): ✅ nicht vorhanden'],
+    ['dim', 'JSON: scan-127.0.0.1.json'],
+    ['dim', 'Hinweis: der Accept-Schritt hat „Alle akzeptieren“ geklickt, nicht die Ablehnen-Variante davor.']
+  ];
+  var FIXTURES = { site: LINES, order: LINES_ORDER };
+  var fixture = 'site';
+  var term = $('#term'), running = false;
+  function renderTerm(instant) {
+    term.innerHTML = FIXTURES[fixture].map(function (l) { return '<div class="row ' + (l[0] === 'ph' ? 'ph' : l[0]) + '">' + l[1] + '</div>'; }).join('');
+    var rows = $$('.row', term);
+    if (instant) { rows.forEach(function (r) { r.classList.add('in'); }); return; }
+    running = true;
+    rows.forEach(function (r, i) { setTimeout(function () { r.classList.add('in'); if (i === rows.length - 1) running = false; }, 140 * i + (i > 1 && i < 6 ? 250 : 0) + (i >= 6 ? 600 : 0) + (i >= 9 ? 700 : 0) + (i >= 14 ? 500 : 0)); });
+  }
+  $('#runScan').addEventListener('click', function () { if (!running) renderTerm(reduced); });
+  $$('[data-fx]').forEach(function (b) { b.addEventListener('click', function () { if (running) return; fixture = b.dataset.fx; $$('[data-fx]').forEach(function (x) { x.classList.toggle('on', x === b); }); renderTerm(true); }); });
+  renderTerm(true);
+
+  /* ---------- verdicts toggle ---------- */
+  var FRAMES = {
+    law: { cls: '', head: '🔴 K-01 · Google Fonts werden zur Laufzeit von Google geladen', kind: 'Rechtslage', body: [
+      ['Befund', '<code>app/layout.tsx:12</code> bindet <code>&lt;link href="https://fonts.googleapis.com/…"&gt;</code> ein; Runtime-Scan: Requests an fonts.googleapis.com und fonts.gstatic.com vor jeder Consent-Interaktion.'],
+      ['Rechtsgrundlage', 'Übermittlung der IP-Adresse an Google ohne Rechtsgrundlage (Art. 6 Abs. 1 DSGVO), § 25 Abs. 1 TDDDG; LG München I, 3 O 17493/20.'],
+      ['Risiko', 'Schadensersatz-/Abmahnmuster „Google Fonts“, automatisiert erkennbar; Kontrollverlust-Logik (BGH VI ZR 10/24).'],
+      ['Maßnahme', 'Font self-hosten, <code>&lt;link&gt;</code> und <code>preconnect</code> entfernen, CSP <code>font-src \'self\'</code>.'],
+      ['Aufwand', 'S']] },
+    rule: { cls: 'rule', head: '🔴 K-04 · Terminanfrage mit Behandlungswunsch läuft über Calendly (US)', kind: 'Konservative Regel', body: [
+      ['Befund', 'Buchungs-Embed <code>calendly.com</code> auf <code>/termin</code>; Feld „Anliegen“ nimmt Behandlungswünsche entgegen (Art. 9).'],
+      ['Rechtsgrundlage', 'Art. 9 Abs. 2 lit. a DSGVO, Kap. V Drittlandtransfer. <b style="display:inline;text-transform:none;letter-spacing:0;font-family:inherit;color:var(--orange)">Konservative Regel:</b> kein US-Dienst im Art.-9-Datenpfad. Rechtlich wäre ein Transfer mit DPF-Zertifizierung + AVV + TIA + § 203-StGB-Absicherung möglich; der Dokumentationsaufwand steht für eine Praxis selten im Verhältnis.'],
+      ['Risiko', 'Bei fehlender Absicherung: unrechtmäßige Verarbeitung besonderer Kategorien, Reputationsschaden; mit Absicherung: Restrisiko, das eine anwaltliche Freigabe tragen kann.'],
+      ['Maßnahme', 'Cal.com self-hosted oder EU-Buchungstool; Freitextfeld ohne Behandlungsbezug. Alternativ: anwaltliche Freigabe der Ausnahme dokumentieren.'],
+      ['Aufwand', 'M']] }
+  };
+  function renderFrame(k) {
+    var f = FRAMES[k];
+    $('#finding').innerHTML = '<header class="' + f.cls + '"><span>' + f.head + '</span><span class="chip" style="margin-left:auto">' + f.kind + '</span></header><div class="body">' + f.body.map(function (b) { return '<div><b>' + b[0] + '</b>' + b[1] + '</div>'; }).join('') + '</div>';
+    $$('.toggle button[data-frame]').forEach(function (b) { b.classList.toggle('on', b.dataset.frame === k); });
+  }
+  $$('.toggle button[data-frame]').forEach(function (b) { b.addEventListener('click', function () { renderFrame(b.dataset.frame); }); });
+  renderFrame('law');
+
+  /* ---------- nav highlight ---------- */
+  var links = $$('.nav a[href^="#"]');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) links.forEach(function (a) { a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id); }); });
+    }, { rootMargin: '-40% 0px -55% 0px' });
+    $$('section[id]').forEach(function (s) { io.observe(s); });
+  }
+})();
+</script>
+
+</body></html>

@@ -1,0 +1,11 @@
+{
+  "name": "tischlerei-beispiel",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "astro": "5.7.0",
+    "@astrojs/node": "9.2.0",
+    "@fontsource/inter": "5.2.5",
+    "nodemailer": "6.10.0"
+  }
+}

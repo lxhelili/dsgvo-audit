@@ -1,0 +1,40 @@
+name: "Legal update: new ruling, law change, guidance"
+description: Something in references/recht.md, checklist.md or the templates is outdated or wrong.
+title: "[legal] <norm / ruling>"
+labels: [legal]
+body:
+  - type: input
+    id: what
+    attributes:
+      label: Norm, ruling or guidance
+      placeholder: "e.g. EuGH C-xxx/25, § 25 TDDDG amendment, DSK Orientierungshilfe 2026"
+    validations: { required: true }
+  - type: input
+    id: date
+    attributes:
+      label: Date it took effect / was decided
+      placeholder: "YYYY-MM-DD"
+    validations: { required: true }
+  - type: textarea
+    id: change
+    attributes:
+      label: What changes for website operators?
+      description: Concretely — which checklist item, which service verdict, which template sentence.
+    validations: { required: true }
+  - type: textarea
+    id: sources
+    attributes:
+      label: Primary source
+      description: Link to the judgment, the Bundesgesetzblatt/EUR-Lex entry, or the authority's document. Blog posts are fine as secondary sources only.
+    validations: { required: true }
+  - type: checkboxes
+    id: files
+    attributes:
+      label: Files affected
+      options:
+        - label: references/recht.md
+        - label: references/checklist.md
+        - label: references/services.md
+        - label: assets/datenschutzerklaerung-template.md
+        - label: assets/impressum-template.md
+        - label: SKILL.md

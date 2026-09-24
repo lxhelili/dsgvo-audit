@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Validate skill, plugin manifests and version sync
+        run: npm run validate
+      - name: Phase 1 static-scan commands find what they must
+        run: npm run test:phase1
+      - name: Deterministic grader accepts golden fixtures, rejects broken report
+        run: npm run test:grader
+      - name: Runtime scanner end-to-end
+        run: npm run test:scanner
+      - name: Package builds
+        run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsgvo-audit.skill
+          path: dist/dsgvo-audit.skill
+          retention-days: 14

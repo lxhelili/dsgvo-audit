@@ -1,0 +1,16 @@
+{
+  "name": "dsgvo-audit",
+  "displayName": "DSGVO Audit",
+  "version": "1.0.0",
+  "description": "DSGVO/TDDDG/DDG compliance audit for websites and web apps under German law — traces data from browser to API to database to third parties, then generates or fixes Datenschutzerklärung, Impressum and consent gating.",
+  "author": {
+    "name": "Lavdim Xhelili",
+    "url": "https://github.com/lxhelili"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/lxhelili/dsgvo-audit",
+  "repository": "https://github.com/lxhelili/dsgvo-audit",
+  "keywords": ["DSGVO", "GDPR", "TDDDG", "DDG", "Datenschutz", "Impressum", "cookie-consent", "compliance", "germany", "privacy"],
+  "skills": ["./skills/dsgvo-audit"],
+  "agents": ["./agents/dsgvo-auditor.md"]
+}

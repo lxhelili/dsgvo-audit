@@ -1,0 +1,60 @@
+name: Quarterly legal review
+
+# The skill's law-stand is a promise to the reader. Every quarter this opens one issue with the
+# checklist of things that move (DPF, § 25 TDDDG / Digital Omnibus, KI-VO, DSK, courts, BFSG).
+# Outcome is always a release: either findings → recht.md/services.md/checklist.md + an eval
+# expectation, or nothing changed → `npm run version:bump -- x.y.z --law-stand YYYY-MM --allow-empty`.
+# Run it by hand any time from the Actions tab.
+
+on:
+  schedule:
+    - cron: '0 7 1 1,4,7,10 *'   # 07:00 UTC on 1 Jan / Apr / Jul / Oct
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  open-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read current law-stand
+        id: stand
+        run: |
+          STAND=$(grep -E '^\s+law-stand:' skills/dsgvo-audit/SKILL.md | sed -E 's/.*"([0-9-]+)".*/\1/')
+          echo "stand=$STAND" >> "$GITHUB_OUTPUT"
+          echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+      - name: Open or reuse the review issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAND: ${{ steps.stand.outputs.stand }}
+          MONTH: ${{ steps.stand.outputs.month }}
+        run: |
+          TITLE="[legal] Quarterly review $MONTH (law-stand $STAND)"
+          if gh issue list --label legal-review --state open --search "\"$TITLE\"" --json number --jq '.[0].number' | grep -q .; then
+            echo "open review issue already exists"; exit 0
+          fi
+          gh label create legal-review --color B60205 --description "Scheduled re-verification of the legal references" 2>/dev/null || true
+          cat > body.md <<MD
+          Current law-stand: **$STAND**. Check each point against a primary source (judgment, Bundesgesetzblatt, EUR-Lex, the authority's own PDF), not a blog post.
+
+          ### Moving parts
+          - [ ] **DPF status** — CJEU appeal against EuG T-553/23 (Latombe); any Commission review; does \`recht.md\` still describe the transfer basis correctly?
+          - [ ] **Digital Omnibus / cookie rules** — has anything moving § 25 TDDDG into the DSGVO passed? If yes: verdicts change → **major** release.
+          - [ ] **TDDDG § 25 / EinwV** — new recognised consent-management services, DSK or BfDI guidance on banners, dark patterns, reject-button.
+          - [ ] **KI-VO (AI Act)** — Art. 50 transparency deadlines, GPAI obligations, anything that touches the *KI-Funktionen* checklist section.
+          - [ ] **DSK / Landesbehörden** — new Orientierungshilfen (Telemedien, Webtracking, KI, Beschäftigtendaten), new Bußgeld cases on fonts / banners / pixels.
+          - [ ] **Courts** — BGH, OLG and EuGH rulings on Google Fonts, cookie banners, immaterial damages (Art. 82), reCAPTCHA, Meta Pixel.
+          - [ ] **DDG / Impressum** — § 5 DDG changes, VSBG, OS-Plattform successor.
+          - [ ] **BFSG** — enforcement practice, new exemptions.
+          - [ ] **Service verdicts** — spot-check 10 rows in \`services.md\` (DPF certification still listed? region options changed? new DPA URL?).
+
+          ### Close-out (always ends in a release)
+          - [ ] Findings → \`references/recht.md\`, \`services.md\`, \`checklist.md\`, templates
+          - [ ] Each verdict change gets an expectation in \`evals/evals.json\`
+          - [ ] \`npm run version:bump -- x.y.z --law-stand $MONTH\` (add \`--allow-empty\` if nothing changed) → \`npm test\` → commit, tag, push
+          - [ ] Upload the new \`.skill\` to the Claude.ai account (not automatic)
+          MD
+          gh issue create --title "$TITLE" --label legal --label legal-review --body-file body.md

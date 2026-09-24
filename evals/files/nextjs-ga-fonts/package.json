@@ -1,0 +1,11 @@
+{
+  "name": "beispiel-agentur-site",
+  "private": true,
+  "dependencies": {
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@sentry/nextjs": "9.10.0",
+    "resend": "4.2.0"
+  }
+}

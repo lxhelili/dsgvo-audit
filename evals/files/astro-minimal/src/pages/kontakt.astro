@@ -1,0 +1,15 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Kontakt">
+  <h1>Kontakt</h1>
+  <form method="POST" action="/api/contact">
+    <label>Name <input name="name" required /></label>
+    <label>E-Mail <input name="email" type="email" required /></label>
+    <label>Nachricht <textarea name="message" required></textarea></label>
+    <!-- Honeypot -->
+    <input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" />
+    <p>Hinweise zur Verarbeitung Ihrer Daten finden Sie in der <a href="/datenschutz">Datenschutzerklärung</a>.</p>
+    <button type="submit">Senden</button>
+  </form>
+</Layout>

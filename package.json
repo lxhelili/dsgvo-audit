@@ -1,0 +1,26 @@
+{
+  "name": "dsgvo-audit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Claude skill + plugin: DSGVO/TDDDG/DDG compliance audit for websites and web apps under German law.",
+  "type": "module",
+  "license": "MIT",
+  "repository": "github:lxhelili/dsgvo-audit",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "test": "npm run validate && bash tests/phase1.test.sh && node tests/grade-report.test.mjs && node tests/scanner.test.mjs",
+    "test:phase1": "bash tests/phase1.test.sh",
+    "test:grader": "node tests/grade-report.test.mjs",
+    "test:scanner": "node tests/scanner.test.mjs",
+    "scan": "node skills/dsgvo-audit/scripts/scan-origins.mjs",
+    "grade": "node scripts/grade-report.mjs",
+    "package": "node scripts/package-skill.mjs",
+    "version:bump": "node scripts/bump-version.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

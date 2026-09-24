@@ -1,0 +1,48 @@
+name: Release
+
+# Push a tag like v1.1.0 → builds the .skill, extracts that version's CHANGELOG section,
+# and publishes a GitHub Release with the .skill attached. Claude Code users get the update
+# via `/plugin update`; Claude.ai / Cowork users download the .skill from the release.
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tag must match plugin.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          [ "$TAG" = "$VER" ] || { echo "tag v$TAG != plugin.json $VER"; exit 1; }
+      - run: npm run package
+      - name: Extract changelog section
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          awk -v v="$VER" '
+            $0 ~ "^## \\[" v "\\]" {f=1; next}
+            f && /^## \[/ {exit}
+            f {print}
+          ' CHANGELOG.md > release-notes.md
+          echo "" >> release-notes.md
+          echo "---" >> release-notes.md
+          echo "**Claude Code:** \`/plugin marketplace add lxhelili/dsgvo-audit\` → \`/plugin install dsgvo-audit@lxhelili\` (or \`/plugin update dsgvo-audit@lxhelili\`)" >> release-notes.md
+          echo "**Claude.ai / Cowork:** download \`dsgvo-audit.skill\` below and upload it in Settings → Skills." >> release-notes.md
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "dsgvo-audit $GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            "dist/dsgvo-audit.skill#dsgvo-audit.skill (for Claude.ai / Cowork)" \
+            "dist/dsgvo-audit-${GITHUB_REF_NAME#v}.skill"

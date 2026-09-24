@@ -1,0 +1,34 @@
+name: "Service entry: add or correct a third-party service"
+description: Propose a new row for references/services.md or a correction to an existing one.
+title: "[service] <Service name>"
+labels: [services]
+body:
+  - type: input
+    id: service
+    attributes:
+      label: Service and vendor
+      placeholder: "e.g. Umami Cloud — Umami Software Inc., US"
+    validations: { required: true }
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [Fonts/Assets/CDN, Analytics/Tracking, Captcha/Forms, Embeds/Widgets, Hosting/Backend/Infra, AI/LLM API, Email/Newsletter, Payment, CRM/Automation, Other]
+    validations: { required: true }
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: What does it do on the user's device / with the data?
+      description: Cookies or storage set? Scripts loaded from which origin? IP transmitted where? Region options? Is there a DPA/AVV?
+    validations: { required: true }
+  - type: textarea
+    id: verdict
+    attributes:
+      label: Proposed row (Consent | DSGVO basis | Drittland | Urteil)
+      placeholder: "| Umami Cloud | nein (cookieless) | 6(1)(f) | US (EU-Region wählbar) | 🟡 EU-Region + DPA; in DSE nennen |"
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Vendor privacy docs, DPA page, DPF list entry, supervisory-authority statement, court ruling. At least one primary source.
+    validations: { required: true }

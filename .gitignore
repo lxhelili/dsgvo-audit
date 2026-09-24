@@ -1,0 +1,13 @@
+node_modules/
+dist/
+scan-*.json
+*.log
+.DS_Store
+.env
+.env.*
+!tests/fixtures/repo/.env.local
+!evals/files/**/.env.example
+.tokensave
+evals/workspace/
+dist-scan-test.json
+.remember/

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Terminanfrage — Praxis für Ästhetische Chirurgie Dr. Beispiel</title>
+  <link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+  <h1>Terminanfrage</h1>
+
+  <!-- Variante A: eigenes Formular → Formspree -->
+  <form action="https://formspree.io/f/xEXAMPLE" method="POST">
+    <label>Name <input name="name" required></label>
+    <label>E-Mail <input name="email" type="email" required></label>
+    <label>Telefon <input name="phone"></label>
+    <label>Gewünschte Behandlung
+      <select name="behandlung">
+        <option>Beratung Nasenkorrektur</option>
+        <option>Faltenunterspritzung</option>
+        <option>Brustvergrößerung</option>
+        <option>Narbenkorrektur nach OP</option>
+      </select>
+    </label>
+    <label>Beschwerden / Vorerkrankungen / Medikamente
+      <textarea name="beschwerden" rows="5" placeholder="z. B. Allergien, Blutverdünner, frühere Eingriffe"></textarea>
+    </label>
+    <label>Foto der betroffenen Stelle (optional) <input type="file" name="foto" accept="image/*"></label>
+    <input type="hidden" name="_subject" value="Neue Terminanfrage">
+    <button type="submit">Anfrage senden</button>
+  </form>
+
+  <!-- Variante B: Calendly, seit letzter Woche eingebaut -->
+  <h2>Oder direkt online buchen</h2>
+  <div class="calendly-inline-widget" data-url="https://calendly.com/praxis-beispiel/erstberatung?hide_gdpr_banner=1" style="min-width:320px;height:700px;"></div>
+  <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+
+  <footer>
+    <a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a>
+  </footer>
+</body>
+</html>
