@@ -12,7 +12,7 @@ It is built for agencies and freelancers who ship client sites in Germany and wa
 
 1. **Evidence, never guesswork.** Scans the codebase (dependencies, source, config, env key names), runs a **Playwright runtime scanner** against the live site that records every third-party origin, cookie and storage key *before* any consent interaction, after "Ablehnen" and after "Akzeptieren", and traces personal data hop by hop: browser → edge/middleware → API/server actions → database → third-party processors (mail, AI APIs, CRM, payment) → logs, monitoring, CI.
 2. **Audits** against a 100+ item checklist: Impressum, Art. 13 information duties, § 25 TDDDG consent, processors and third-country transfers, backend data flow, forms, AI features (Art. 22 DSGVO, Art. 50 KI-VO), Art. 9 health data for practices and care services, organisational duties, security headers.
-3. **Reports** in German with 🔴/🟠/🟡/🟢/⚪️ statuses, a data-flow table, a per-finding block (Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand) and a prioritised action plan.
+3. **Reports** in German with 🔴/🟠/🟡/🟢/⚪️ statuses, a data-flow table, a per-finding block (Befund → Rechtsgrundlage → Risiko → Maßnahme → Aufwand → Evidenz, with an evidence ID and level) and a prioritised action plan.
 4. **Fixes** on request: modular Datenschutzerklärung (DE + EN), Impressum, cookie-banner text, VVT (Art. 30) and TOMs (Art. 32) templates, consent-gating patterns (framework-agnostic principles + examples for plain HTML, Next.js, Angular, Astro, WordPress), then re-audits its own output.
 
 Verdicts for ~50 common services (Google Fonts/Analytics/Maps/reCAPTCHA, Meta Pixel, YouTube, Hotjar, Matomo, Plausible, Vercel, Supabase, Firebase, Resend, Sentry, Stripe, Calendly, OpenAI/Anthropic/Gemini APIs, Turnstile, Friendly Captcha, …) live in [`references/services.md`](skills/dsgvo-audit/references/services.md).
@@ -86,7 +86,7 @@ skills/dsgvo-audit/
   SKILL.md              workflow, deployment rules, report format
   references/           checklist · recht (law, case law, fines) · law-watch (open points, re-check dates) · services · architecture (data-flow trace) · patterns (gating)
   assets/               templates: Datenschutzerklärung (DE + EN), Impressum, cookie-banner texts, VVT (Art. 30), TOMs (Art. 32)
-  scripts/              scan-origins.mjs (runtime scanner) · lint-origins.mjs (static) · parse-gtm.mjs · parse-har.mjs · render-report.mjs (HTML/PDF) · lib/signatures.mjs
+  scripts/              scan-origins.mjs (runtime scanner) · lint-origins.mjs (static) · parse-gtm.mjs · parse-har.mjs · render-report.mjs (HTML/PDF) · build-evidence.mjs · list-processors.mjs · diff-scans.mjs · lib/
 examples/ci/            GitHub Actions example: lint on PRs, runtime scan with --strict on preview deployments
 agents/                 dsgvo-auditor subagent
 tests/                  fixtures + tests that run the skill's own commands

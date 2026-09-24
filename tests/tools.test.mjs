@@ -88,6 +88,90 @@ const clean = () => { if (existsSync(OUT)) unlinkSync(OUT); };
   check(aa.json.phases['after-accept'] && aa.json.verdict.thirdPartyAfterAccept?.length === 3, '--phase after-accept files the origins under the inventory, not as violation');
 }
 
+// ---- build-evidence / list-processors / diff-scans (v1.2) ----
+{
+  clean();
+  console.log('build-evidence.mjs, list-processors.mjs, diff-scans.mjs:');
+  const HAR = join(ROOT, 'dist-tools-test-har.json');
+  const HAR2 = join(ROOT, 'dist-tools-test-har2.json');
+  const LINT = join(ROOT, 'dist-tools-test-lint.json');
+  const GTM = join(ROOT, 'dist-tools-test-gtm.json');
+  const tmp = [HAR, HAR2, LINT, GTM];
+  run('parse-har.mjs', [join(ROOT, 'tests', 'fixtures', 'site.har'), '--out', HAR]);
+  run('lint-origins.mjs', [join(ROOT, 'tests', 'fixtures', 'repo'), '--out', LINT]);
+  run('parse-gtm.mjs', [join(ROOT, 'tests', 'fixtures', 'gtm-container.json'), '--out', GTM]);
+
+  const ev = run('build-evidence.mjs', [HAR, LINT, GTM, '--out', OUT]);
+  const e = ev.json.entries;
+  check(ev.code === 0 && e.length > 0 && e.every((x, i) => x.id === `E-${String(i + 1).padStart(2, '0')}`), 'entries numbered E-01 … in order');
+  check(e[0].source === 'har' && e.some((x) => x.source === 'lint') && e.some((x) => x.source === 'gtm'), 'HAR, lint and GTM recognised by shape');
+  check(e.some((x) => x.type === 'origin' && x.subject === 'fonts.googleapis.com' && x.phase === 'pre-consent'), 'pre-consent origin becomes an entry');
+  check(e.some((x) => x.type === 'cookie' && x.subject === '_ga@google-analytics.com'), 'third-party cookie becomes an entry');
+  check(e.some((x) => x.type === 'server' && x.subject === 'openai' && /route\.ts:1/.test(x.where)), 'server-side recipient with file:line');
+  check(e.some((x) => x.type === 'gtm-tag' && x.subject === 'GA4 - Config'), 'GTM tag becomes an entry');
+  check(!e.some((x) => x.subject === 'Old UA (paused)'), 'paused GTM tag is not evidence');
+  check(!JSON.stringify(ev.json.inputs).includes(ROOT), 'no absolute local path in the evidence sources');
+  const again = run('build-evidence.mjs', [HAR, LINT, GTM, '--out', OUT]);
+  check(JSON.stringify(again.json.entries) === JSON.stringify(e), 'same inputs → same IDs');
+  const md = run('build-evidence.mjs', [HAR, LINT, '--md']);
+  check(/^\| ID \| Quelle/.test(md.stdout) && /\| E-01 \| HAR \(Mandant\)/.test(md.stdout), '--md prints the Evidenzverzeichnis table');
+  const failed = join(ROOT, 'dist-tools-test-failed.json'); tmp.push(failed);
+  writeFileSync(failed, JSON.stringify({ target: 'https://down.example/', phases: {}, verdict: null }));
+  const sk = run('build-evidence.mjs', [failed, LINT, '--out', OUT]);
+  check(sk.json.skipped.length === 1 && sk.json.entries[0].source === 'lint', 'a scan without result is skipped, not read as clean');
+  check(run('build-evidence.mjs', [join(ROOT, 'package.json')]).code === 2, 'unrecognised JSON exits 2');
+
+  const pr = run('list-processors.mjs', [HAR, LINT, GTM, '--out', OUT]);
+  const rec = (n) => pr.json.recipients.find((r) => r.names.includes(n));
+  check(rec('Google Fonts')?.role === 'vermeiden', 'Google Fonts → vermeiden (self-host), not an AVV');
+  check(rec('Resend')?.role === 'AV' && rec('Resend').evidence.length === 2, 'resend dependency + server hit grouped under one AV row');
+  check(rec('Sentry')?.role === 'AV' && rec('OpenAI API')?.role === 'AV', 'Sentry and OpenAI API are AV');
+  check(rec('Meta Pixel / SDK')?.role === 'Art. 26', 'Meta Pixel inside a GTM Custom HTML tag → Art. 26 via the tag\'s origins');
+  check(rec('Consent-Management-Plattform')?.role === 'AV', 'CMP origin → AV');
+  const prMd = run('list-processors.mjs', [HAR, LINT, GTM, '--md']);
+  check(/AVV\/DPA Resend/.test(prMd.stdout) && /Art\. 28 Abs\. 3/.test(prMd.stdout), '--md lists the AVVs to request and the Art. 28(3) contents');
+  check(/⚪️ Mandant/.test(prMd.stdout) && !/✅/.test(prMd.stdout), 'contract status is never claimed — always ⚪️ for the client to confirm');
+  const { SIGNATURES } = await import(join(SCRIPTS, 'lib', 'signatures.mjs'));
+  const { lookup } = await import(join(SCRIPTS, 'lib', 'processors.mjs'));
+  const unmapped = [...new Set(SIGNATURES.map(([, n]) => n))].filter((n) => !lookup(n));
+  check(unmapped.length === 0, `every signature has a processor row${unmapped.length ? ` — missing: ${unmapped.join(', ')}` : ''}`);
+
+  const h = JSON.parse(readFileSync(HAR, 'utf8'));
+  h.recordedAt = '2026-10-01T10:00:00.000Z';
+  h.phases['pre-consent'].thirdPartyOrigins = h.phases['pre-consent'].thirdPartyOrigins.filter((o) => o.origin !== 'fonts.googleapis.com');
+  h.phases['pre-consent'].thirdPartyOrigins.push({ origin: 'connect.facebook.net', count: 1, types: ['script'], service: 'Meta Pixel / SDK', kind: 'tracking', setCookie: false });
+  h.phases['pre-consent'].cookies.push({ name: 'lang', domain: 'example.de', thirdParty: false, expiresDays: 30 });
+  writeFileSync(HAR2, JSON.stringify(h));
+  const d = run('diff-scans.mjs', [HAR, HAR2, '--out', OUT, '--strict']);
+  check(d.code === 1, `--strict exits 1 on a new pre-consent tracker (got ${d.code})`);
+  check(d.json.added.some((i) => /connect\.facebook\.net/.test(i.what) && i.severity === 'block'), 'new Meta origin before consent is a blocking regression');
+  check(d.json.added.some((i) => /lang@example\.de/.test(i.what) && i.severity === 'review'), 'new first-party cookie is review, not block');
+  check(d.json.removed.some((i) => /fonts\.googleapis\.com/.test(i.what)), 'removed Google Fonts listed (DSE module can go)');
+  check(run('diff-scans.mjs', [HAR, HAR, '--strict']).code === 0, 'identical scans → exit 0');
+  const dm = run('diff-scans.mjs', [HAR, HAR2, '--md']);
+  check(/🔴 Regression/.test(dm.stdout) && /2026-10-01/.test(dm.stdout), '--md table with regression marker and recording date');
+  check(run('diff-scans.mjs', [HAR, LINT]).code === 2, 'scan vs. lint exits 2');
+  check(run('diff-scans.mjs', [HAR, failed]).code === 3, 'a scan without result exits 3');
+  // a page only the current run scanned (new route on a preview) has no baseline — a tracker on it must still block
+  const h3 = JSON.parse(readFileSync(HAR, 'utf8'));
+  h3.pages = { 'https://example.de/buchung': { target: 'https://example.de/buchung', httpStatus: 200, verdict: {}, phases: { 'pre-consent': {
+    thirdPartyOrigins: [{ origin: 'assets.calendly.com', count: 1, types: ['script'], service: 'Calendly', kind: 'booking' }], cookies: [], storage: {} } } } };
+  const HAR3 = join(ROOT, 'dist-tools-test-har3.json'); tmp.push(HAR3);
+  writeFileSync(HAR3, JSON.stringify(h3));
+  const dp = run('diff-scans.mjs', [HAR, HAR3, '--out', OUT, '--strict']);
+  check(dp.code === 1 && dp.json.pagesOnlyInCurrent.includes('/buchung') && dp.json.added.some((i) => i.page === '/buchung' && i.severity === 'block'), 'tracker on a page with no baseline still fails --strict');
+  const dr = run('diff-scans.mjs', [HAR3, HAR, '--out', OUT]);
+  check(dr.json.removed.every((i) => i.page !== '/buchung'), 'a page not scanned this time is not reported as "removed"');
+  const l = JSON.parse(readFileSync(LINT, 'utf8'));
+  l.serverSide.push({ file: 'src/route.ts', line: 9, hit: 'hubspot', snippet: '' });
+  l.config.regions.push({ region: 'iad1', nonEU: true });
+  const LINT2 = join(ROOT, 'dist-tools-test-lint2.json'); tmp.push(LINT2);
+  writeFileSync(LINT2, JSON.stringify(l));
+  const dl = run('diff-scans.mjs', [LINT, LINT2, '--out', OUT, '--strict']);
+  check(dl.code === 1 && dl.json.added.some((i) => i.key === 'server|hubspot') && dl.json.added.some((i) => i.key === 'region|iad1'), 'lint diff: new server-side recipient and non-EU region block');
+  for (const f of tmp) if (existsSync(f)) unlinkSync(f);
+}
+
 // ---- render-report against the golden report and the templates ----
 {
   clean();
@@ -100,7 +184,7 @@ const clean = () => { if (existsSync(OUT)) unlinkSync(OUT); };
   check(r.code === 0 && existsSync(html), 'HTML written');
   const h = existsSync(html) ? readFileSync(html, 'utf8') : '';
   check((h.match(/<h2 /g) || []).length === 8, 'eight H2 sections rendered');
-  check((h.match(/<table>/g) || []).length === 3, 'three tables rendered');
+  check((h.match(/<table>/g) || []).length === 4, 'four tables rendered (incl. Evidenzverzeichnis)');
   check(/<title>Datenschutz-Audit — beispiel-agentur\.de/.test(h), 'title taken from the H1');
   check(!/(src|href)="https?:\/\//.test(h.replace(/<code>[^<]*<\/code>/g, '')), 'no external src/href — the deliverable follows the skill\'s own rule');
   check(!/<link |<script/.test(h), 'no <link> or <script> tags at all');

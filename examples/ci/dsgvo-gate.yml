@@ -4,6 +4,8 @@
 #
 # Job 1 (static, every PR):   lint-origins.mjs --strict  → fails when the code loads fonts/CDN assets or
 #                              reCAPTCHA from the vendor, or references a tracker with no consent gate in sight.
+#                              Then diff-scans.mjs compares the lint of the PR with the lint of the base branch and
+#                              writes what the PR adds (new SDK, origin, server-side recipient, region) to the job summary.
 # Job 2 (runtime, on deploy): scan-origins.mjs --strict  → fails when anything non-essential fires before
 #                              consent or after "Ablehnen" on the preview URL, on the start page and on --pages.
 #
@@ -28,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0                      # the base branch is needed for the diff below
       - uses: actions/checkout@v7
         with:
           repository: lxhelili/dsgvo-audit      # ← the skill repo (or vendor the scripts/ folder)
@@ -37,11 +41,18 @@ jobs:
           node-version: 22
       - name: Static origin lint
         run: node .dsgvo-audit/skills/dsgvo-audit/scripts/lint-origins.mjs . --own example.de --out lint.json --strict   # ← your domain
+      - name: What does this PR add? (diff against the base branch)
+        if: always()
+        run: |
+          git worktree add ../base "origin/${{ github.base_ref }}"
+          node .dsgvo-audit/skills/dsgvo-audit/scripts/lint-origins.mjs ../base --own example.de --out lint-base.json || true   # ← your domain
+          # --md into the job summary; add --strict to fail the PR on a new tracker, AI SDK, server-side recipient or non-EU region
+          node .dsgvo-audit/skills/dsgvo-audit/scripts/diff-scans.mjs lint-base.json lint.json --md --out lint-diff.json >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: dsgvo-lint
-          path: lint.json
+          path: lint*.json
 
   runtime:
     if: >-

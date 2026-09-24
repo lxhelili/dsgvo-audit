@@ -1,0 +1,53 @@
+# dsgvo-watch.yml — scheduled privacy change detection for a live site (maintenance retainer).
+#
+# Every Monday the production site is scanned and compared with a baseline committed to the client repo.
+# A new third-party origin, cookie or storage key before consent or after "Ablehnen", a new third-party
+# form target or a returning OS-Plattform link fails the run (diff-scans.mjs --strict); new services after
+# "Akzeptieren" and removed services are listed in the job summary — both mean the Datenschutzerklärung,
+# the banner and the VVT need an update.
+#
+# Setup: run the scanner once on production after the audit is signed off and commit the JSON as
+# .dsgvo/baseline-scan.json. After an intended change (new service, DSE updated), replace the baseline
+# with the scan artifact of that run. Copy this file to .github/workflows/ and adjust the marked lines.
+# A green run means "nothing changed on these pages", not "the site is compliant".
+
+name: Datenschutz watch
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'       # Mondays 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: https://www.example.de/       # ← production URL
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: lxhelili/dsgvo-audit  # ← the skill repo (or vendor the scripts/ folder)
+          path: .dsgvo-audit
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm i --no-save playwright && npx playwright install --with-deps chromium
+      - name: Runtime scan
+        # the same --pages as the baseline — pages scanned in only one run are reported, not compared
+        run: >-
+          node .dsgvo-audit/skills/dsgvo-audit/scripts/scan-origins.mjs "$TARGET"
+          --pages "/kontakt,/impressum,/datenschutz"
+          --out scan.json
+      - name: Compare with the baseline
+        # exit 1 = privacy regression · exit 3 = a scan without result (never read as "no change")
+        run: >-
+          node .dsgvo-audit/skills/dsgvo-audit/scripts/diff-scans.mjs .dsgvo/baseline-scan.json scan.json
+          --md --out diff.json --strict >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: dsgvo-watch
+          path: |
+            scan.json
+            diff.json

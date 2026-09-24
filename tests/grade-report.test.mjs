@@ -35,6 +35,23 @@ console.log('grade-report against golden fixtures:');
   check(/❌ Report makes no forbidden claim/.test(r.out), '"abmahnsicher" detected');
   check(/❌ Report has no leftover template placeholder/.test(r.out), '[PLATZHALTER] detected');
   check(/❌ Report does not recommend adding the OS-Plattform link/.test(r.out), '"OS-Plattform-Link ergänzen" detected');
+  check(/❌ Every 🔴\/🟠 finding names its evidence/.test(r.out), 'finding without evidence line detected');
+}
+{
+  // Evidence IDs: a finding that cites an ID the Evidenzverzeichnis does not list, or drops its evidence line, fails.
+  const { writeFileSync, readFileSync, unlinkSync } = await import('node:fs');
+  const tmp = join(ROOT, 'dist-grade-evidence-test.md');
+  const golden = readFileSync(join(FIX, 'good-report.md'), 'utf8');
+  writeFileSync(tmp, golden.replace('**Evidenz:** E-02 ·', '**Evidenz:** E-42 ·'));
+  let r = await grade('--report', tmp);
+  check(r.code === 1 && /❌ Every evidence ID cited[^\n]*\n\s*↳ not listed: E-42/.test(r.out), 'dangling evidence ID E-42 detected');
+  writeFileSync(tmp, golden.replace(/\*\*Evidenz:\*\* E-03, E-05 · beobachtet[^\n]*\n/, ''));
+  r = await grade('--report', tmp);
+  check(r.code === 1 && /❌ Every 🔴\/🟠 finding names its evidence[^\n]*\n\s*↳ without evidence line: ### 🟠 H-01/.test(r.out), 'finding without evidence line detected by name');
+  writeFileSync(tmp, golden.replace('### Evidenzverzeichnis', '### Quellen'));
+  r = await grade('--report', tmp);
+  check(r.code === 1 && /no "Evidenzverzeichnis" heading/.test(r.out), 'missing Evidenzverzeichnis detected');
+  unlinkSync(tmp);
 }
 {
   const r = await grade('--report', join(FIX, 'good-report.md'), '--expect-no', 'Google Fonts');

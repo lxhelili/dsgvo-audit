@@ -95,6 +95,19 @@ if (reportPath) {
     critical === 0 ? 'no 🔴/🟠 finding headings found (### 🔴 K-01 …)' : incomplete.length ? `incomplete: ${incomplete.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all complete');
   const uncited = blocks.filter(([, , body]) => !/Art\.\s?\d+|§\s?\d+/.test(body));
   check('Every 🔴/🟠 finding cites a norm (Art. … / § …)', critical > 0 && uncited.length === 0, uncited.length ? `uncited: ${uncited.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all cited');
+  // Evidence (v1.2): each 🔴/🟠 finding says which observation it rests on and how certain it is,
+  // and every ID it cites exists in the Evidenzverzeichnis — a finding without a traceable source is an opinion.
+  const EVIDENCE_ID = /\bE-\d{2,3}\b/g;
+  const unevidenced = blocks.filter(([, , body]) => !(/evidenz/i.test(body) && /\bE-\d{2,3}\b/.test(body) && /beobachtet|abgeleitet|mandantenangabe/i.test(body)));
+  check('Every 🔴/🟠 finding names its evidence (E-xx) and level (beobachtet · abgeleitet · Mandantenangabe)', critical > 0 && unevidenced.length === 0,
+    unevidenced.length ? `without evidence line: ${unevidenced.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all carry evidence');
+  const regHeading = t.match(/^(#{2,4})\s+[^\n]*evidenzverzeichnis[^\n]*$/im);
+  const registry = regHeading ? t.slice(regHeading.index + regHeading[0].length).split(new RegExp(`^#{1,${regHeading[1].length}}\\s`, 'm'))[0] : '';
+  const defined = new Set([...registry.matchAll(/^\s*(?:\|\s*|[-*]\s*)\**(E-\d{2,3})\b/gm)].map((m) => m[1]));
+  const cited = [...new Set(blocks.flatMap(([, , body]) => body.match(EVIDENCE_ID) || []))];
+  const dangling = cited.filter((id) => !defined.has(id));
+  check('Every evidence ID cited in a finding is listed in the Evidenzverzeichnis', critical === 0 || (!!regHeading && cited.length > 0 && dangling.length === 0),
+    !regHeading ? 'no "Evidenzverzeichnis" heading' : dangling.length ? `not listed: ${dangling.join(', ')}` : `${cited.length} cited, ${defined.size} listed`);
   check('Effort scale used (Aufwand: S/M/L)', critical === 0 || /aufwand:?\**\s*\**\s*[SML]\b/i.test(t), excerpt(t.match(/aufwand[^\n]{0,30}/i)?.[0]));
 
   check('Report ends with the RDG disclaimer', RDG.test(t.slice(-2500)) && /rechtsberatung/i.test(t.slice(-2500)), excerpt(t.slice(-2500).match(/[^\n]*RDG[^\n]*/)?.[0]));
