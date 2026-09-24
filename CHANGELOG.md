@@ -6,6 +6,19 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+### Fixed
+
+- `lint-origins.mjs` missed env keys whose name *starts* with the service keyword (`RESEND_API_KEY`, `SENTRY_DSN`) — only keys with a prefix (`NEXT_PUBLIC_GA_ID`) were recorded. Found by the iteration-3 eval run.
+- `signatures.mjs` labelled `googletagmanager.com/gtag/js` as "Google Tag Manager"; gtag.js is the Google tag for GA4/Ads, not a GTM container. It now has its own signature ("Google tag (gtag.js)"), mapped to the GA row in `processors.mjs`.
+
+### Changed
+
+- SKILL.md report section 5 gains a **Rolle** column (Art. 28 / Art. 26 / eigener Verantwortlicher / self-hosten) — `list-processors.mjs` produced it, the report spec did not ask for it, so a 1.2.1 report dropped it (eval 1).
+- SKILL.md rule 6: DPF status only from the official list with the check date — never from memory or a secondary website; if the list cannot be opened, write both branches (listed → DPF, not listed → SCC + TIA) instead of a verdict. Both 1.2.0 and 1.2.1 built "SCC + TIA" on a secondary website's "not DPF-certified" in the eval run.
+- SKILL.md rule 8: for Berufsgeheimnisträger the § 203 Abs. 4 StGB obligation (§ 62a StBerG, § 43e BRAO) covers every processor that sees the content — the 1.2.1 run asked it for OpenAI only, not for the Supabase transcript store.
+- `grade-report.mjs`: three false positives fixed — a regex inside a code block counted as a template placeholder; a negated „keine … im Sinne von § 25 Abs. 1 TDDDG“ made a DSE "consent-based"; a „kein Link auf ec.europa.eu/consumers/odr“ note counted as an ODR link (now only an actual link does). Tests for each.
+- SKILL.md Management Summary gives the scope sentence verbatim („Gescannt: … Ein Scan erfasst nur diese Seite(n); Unterseiten … brauchen einen eigenen Scan.“) — the 1.2.1 wording still let a run name the scanned page without saying subpages need their own scan (eval 2).
+
 ## [1.2.1] – 2026-09-24
 
 ### Changed

@@ -54,7 +54,10 @@ function forbiddenClaim(text) {
   }
   return null;
 }
-const ODR_LINK = /ec\.europa\.eu\/consumers\/odr/i;
+// a link, not a mention: „kein Link auf ec.europa.eu/consumers/odr“ in a note is the skill doing its job
+const ODR_LINK = /(https?:\/\/|\]\(|href=["']?)(www\.)?ec\.europa\.eu\/consumers\/odr/i;
+// placeholders are checked in prose only — a regex like /[A-Z]{2}/ in a code sample is not a template leftover
+const prose = (t) => t.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
 const RDG = /RDG/;
 
 // ---------------- report ----------------
@@ -112,7 +115,7 @@ if (reportPath) {
 
   check('Report ends with the RDG disclaimer', RDG.test(t.slice(-2500)) && /rechtsberatung/i.test(t.slice(-2500)), excerpt(t.slice(-2500).match(/[^\n]*RDG[^\n]*/)?.[0]));
   { const m = forbiddenClaim(t); check('Report makes no forbidden claim (abmahnsicher, 100 % konform, garantiert …)', !m, excerpt(m)); }
-  check('Report has no leftover template placeholder', !PLACEHOLDER.test(t), excerpt(t.match(PLACEHOLDER)?.[0]));
+  check('Report has no leftover template placeholder', !PLACEHOLDER.test(prose(t)), excerpt(prose(t).match(PLACEHOLDER)?.[0]));
   const addOdr = t.match(/os-plattform(-link)?[^\n]{0,80}(?<!nicht )(einfügen|ergänzen|hinzufügen|aufnehmen|verlinken)|(link|verlinkung)[^\n]{0,60}os-plattform[^\n]{0,60}(?<!nicht )(einfügen|ergänzen|hinzufügen|aufnehmen)|os-plattform[^\n]{0,80}(fehlt|muss verlinkt|ist pflicht)/i);
   check('Report does not recommend adding the OS-Plattform link', !addOdr, addOdr ? excerpt(addOdr[0]) : 'no "add the ODR link" wording');
 }
@@ -120,11 +123,12 @@ if (reportPath) {
 // ---------------- Datenschutzerklärung ----------------
 if (dsePath) {
   const t = readFileSync(dsePath, 'utf8');
-  check('DSE has no leftover template placeholder', !PLACEHOLDER.test(t), excerpt(t.match(PLACEHOLDER)?.[0]));
+  check('DSE has no leftover template placeholder', !PLACEHOLDER.test(prose(t)), excerpt(prose(t).match(PLACEHOLDER)?.[0]));
   check('DSE names the Verantwortlicher with an e-mail address', /verantwortlich/i.test(t) && /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t), excerpt(t.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0]));
   check('DSE states Zweck and Rechtsgrundlage per processing (Art. 6 Abs. 1 lit. …)', (t.match(/Art\.\s?6\s?Abs\.\s?1\s?lit\.\s?[abcf]/g) || []).length >= 2, `${(t.match(/Art\.\s?6\s?Abs\.\s?1\s?lit\.\s?[abcf]/g) || []).length} legal-basis citations`);
   // the withdrawal right only matters where something rests on consent — a consent-free site (cookieless analytics on lit. f) need not list it
-  const consentBased = /Art\.\s?6\s?Abs\.\s?1\s?(S\.\s?1\s?)?lit\.\s?a|Art\.\s?9\s?Abs\.\s?2\s?lit\.\s?a|§\s?25\s?Abs\.\s?1\s?TDDDG/.test(t);
+  // the legal bases only — § 25 TDDDG is often cited to say that nothing needs consent
+  const consentBased = /Art\.\s?6\s?Abs\.\s?1\s?(S\.\s?1\s?)?lit\.\s?a|Art\.\s?9\s?Abs\.\s?2\s?lit\.\s?a/.test(t);
   const rights = ['15', '16', '17', '18', '20'].filter((n) => !new RegExp(`Art\\.\\s?${n}\\b`).test(t));
   const withdrawal = !consentBased || /Art\.\s?7\s?Abs\.\s?3/.test(t);
   check('DSE lists the Betroffenenrechte (Art. 15, 16, 17, 18, 20) and, where anything rests on consent, the withdrawal right (Art. 7 Abs. 3)', !rights.length && withdrawal,
@@ -140,7 +144,7 @@ if (dsePath) {
 // ---------------- Impressum ----------------
 if (impressumPath) {
   const t = readFileSync(impressumPath, 'utf8');
-  check('Impressum has no leftover template placeholder', !PLACEHOLDER.test(t), excerpt(t.match(PLACEHOLDER)?.[0]));
+  check('Impressum has no leftover template placeholder', !PLACEHOLDER.test(prose(t)), excerpt(prose(t).match(PLACEHOLDER)?.[0]));
   check('Impressum cites § 5 DDG, not the repealed TMG', /§\s?5\s?DDG/.test(t) && !/§\s?5\s?TMG/.test(t), excerpt(t.match(/§\s?5\s?(DDG|TMG)/)?.[0]));
   check('Impressum has an e-mail address and a phone number', /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t) && /(\+49|0)[\d\s/()-]{6,}/.test(t), 'contact data present');
   check('Impressum has no OS-Plattform link', !ODR_LINK.test(t), 'no ec.europa.eu/consumers/odr');

@@ -7,6 +7,8 @@
 // unless gated" — the verdict for each service lives in references/services.md, not here.
 
 export const SIGNATURES = [
+  // gtag.js (the Google tag for GA4/Ads) is served from the GTM host but is not a GTM container
+  [/googletagmanager\.com\/gtag\/js/i, 'Google tag (gtag.js)', 'tracking'],
   [/googletagmanager\.com/i, 'Google Tag Manager', 'tracking'],
   [/google-analytics\.com|analytics\.google\.com|\/g\/collect|\/collect\?v=2/i, 'Google Analytics', 'tracking'],
   [/fonts\.googleapis\.com|fonts\.gstatic\.com/i, 'Google Fonts', 'asset'],

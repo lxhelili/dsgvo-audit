@@ -61,10 +61,10 @@ Quellen: Code-Scan beispiel-agentur (2026-09-24). Kein Runtime-Scan — Aussagen
 
 ## 5. Drittanbieter & Auftragsverarbeiter
 
-| Dienst | Zweck | Daten | Rechtsgrundlage | AVV | Drittland + Mechanismus | Consent nötig? | Evidenz |
-|---|---|---|---|---|---|---|---|
-| Google Analytics 4 | Reichweitenmessung | IP, Client-ID, Events | Art. 6 Abs. 1 lit. a | ⚪️ Mandant | US — DPF-Status der Entität prüfen | ja | E-01 |
-| Resend | Transaktionsmail | Formularinhalt | Art. 6 Abs. 1 lit. b | ⚪️ Mandant | US — DPA + DPF/SCC prüfen | nein | — (Datenfluss) |
+| Dienst | Rolle | Zweck | Daten | Rechtsgrundlage | Vertrag | Drittland + Mechanismus | Consent nötig? | Evidenz |
+|---|---|---|---|---|---|---|---|---|
+| Google Analytics 4 | Auftragsverarbeiter (Art. 28) | Reichweitenmessung | IP, Client-ID, Events | Art. 6 Abs. 1 lit. a | ⚪️ Mandant | US — DPF-Status der Entität prüfen | ja | E-01 |
+| Resend | Auftragsverarbeiter (Art. 28) | Transaktionsmail | Formularinhalt | Art. 6 Abs. 1 lit. b | ⚪️ Mandant | US — DPA + DPF/SCC prüfen | nein | — (Datenfluss) |
 
 ## 6. Maßnahmenplan
 

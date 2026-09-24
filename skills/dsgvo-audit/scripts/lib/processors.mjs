@@ -23,7 +23,7 @@ export const PROCESSORS = [
 
   // Google
   { match: /^Google Tag Manager$/, role: 'AV', region: 'US/IE (Google)', contract: 'Google Ads Data Processing Terms', transfer: 'DPF (Google LLC) prüfen' },
-  { name: 'Google Analytics', match: /^Google Analytics$|^Google Tag \(GA4\/Ads\)$|^GA4 (Configuration|Event)$|^react-ga4$|^react-gtm-module$|^@next\/third-parties$/, role: 'AV', region: 'US/IE (Google)', contract: 'Google Ads Data Processing Terms', transfer: 'DPF (Google LLC) prüfen' },
+  { name: 'Google Analytics', match: /^Google Analytics$|^Google tag \(gtag\.js\)$|^Google Tag \(GA4\/Ads\)$|^GA4 (Configuration|Event)$|^react-ga4$|^react-gtm-module$|^@next\/third-parties$/, role: 'AV', region: 'US/IE (Google)', contract: 'Google Ads Data Processing Terms', transfer: 'DPF (Google LLC) prüfen' },
   { match: /^Google Ads( Conversion| Remarketing)?$|^Conversion Linker$|^Floodlight/, role: 'eigener', region: 'US/IE (Google)', contract: 'Controller-Bedingungen von Google (kein AVV)', transfer: 'DPF (Google LLC) prüfen' },
   { match: /^Google Maps$|^YouTube( \(nocookie\))?$|^Google reCAPTCHA$|^react-google-recaptcha$/, role: 'eigener', region: 'US/IE (Google)', contract: 'kein AVV angeboten; Einbindung ggf. Art. 26 (EuGH C-40/17)', transfer: 'DPF (Google LLC) prüfen' },
   { name: 'Firebase', match: /^firebase$/, role: 'AV', region: 'US-Konzern, Region wählbar', contract: 'Firebase/Google Cloud Data Processing Terms', transfer: 'EU-Region + DPF/SCC' },
