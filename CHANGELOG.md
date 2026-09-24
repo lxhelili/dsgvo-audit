@@ -6,6 +6,8 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.2.2] – 2026-09-24
+
 ### Fixed
 
 - `lint-origins.mjs` missed env keys whose name *starts* with the service keyword (`RESEND_API_KEY`, `SENTRY_DSN`) — only keys with a prefix (`NEXT_PUBLIC_GA_ID`) were recorded. Found by the iteration-3 eval run.
@@ -109,7 +111,8 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.0.0...v1.1.0
