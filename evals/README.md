@@ -12,7 +12,7 @@ This directory holds three layers. Each catches a different failure.
 
 The deterministic grader is not a substitute for the LLM grader. It cannot tell whether "🔴 Formspree" was justified; it can tell that the finding has no Rechtsgrundlage line, and that is the part no human should have to re-check on every iteration.
 
-## The six output evals
+## The seven output evals
 
 Each eval is a fixture invented for this repo (no client data, `example.de`/`beispiel` names, fake keys) and a prompt phrased the way an agency developer would actually type it. The `expectations` are written to be *discriminating*: a run that skips Phase 1 and writes a generic policy fails most of them, a run that follows the skill passes most of them, and a good baseline without the skill lands in between.
 
@@ -24,6 +24,7 @@ Each eval is a fixture invented for this repo (no client data, `example.de`/`bei
 | 4 | `astro-minimal-dse-generation` | `files/astro-minimal` — Hetzner, @fontsource, Plausible, nodemailer to own mailbox, honeypot, `INTAKE.md` with all answers | Module discipline: only what the evidence supports; Plausible on 6(1)(f) not consent; retention from intake; no placeholder left; Art. 21 highlighted; LDI NRW named |
 | 5 | `ai-chatbot-processor` | `files/nextjs-ai-chat` — OpenAI route with triage system prompt, unlimited `chat_logs` in Supabase, UI text "Unser Team antwortet sofort" | LLM as Auftragsverarbeiter (DPA, no-training, retention, region); Art. 50 KI-VO labelling; Art. 22 for the triage; tax input as Art. 9-adjacent; "verify via WebSearch" for DPF status |
 | 6 | `member-portal-rights` | `files/nextjs-member-portal` — Supabase accounts, Stripe invoices, Brevo newsletter, Sentry with `setUser`, a „Konto löschen“ route that deletes only `profiles`, a DSE that promises complete deletion | Data-subject rights from code (checklist block 12): the delete flow traced to auth user, Storage, recipients — and its cascade hard-deleting invoices under § 147 AO; unsubscribe/`List-Unsubscribe`; withdrawal link; request channel; a correctly gated Meta Pixel that must not be reported as a pre-consent load |
+| 7 | `rpc-delete-hidden-gaps` | `files/supabase-rpc-delete` — delete via `supabase.rpc('delete_my_account')`: the SQL function deletes the auth user correctly, but `messages` (no FK), `waitlist` and `audit_log` (the function itself logs the e-mail) survive; Brevo/PostHog not reached; DSE promises „anonymisiert“; RLS, double opt-in and avatar removal are correct | Depth: following the flow into SQL and finding tables without a foreign key — and not flagging what is done right (invoices kept under § 147 AO, RLS, DOI) |
 
 `expected_output` describes success in prose for the human reviewer; `expectations` are the graded statements. When an expectation passes for a clearly wrong output, or an important outcome has no expectation, tighten it — the grader agent is asked to flag exactly that.
 

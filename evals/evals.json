@@ -28,7 +28,8 @@
         "Every 🔴/🟠 finding carries an evidence line with an ID (E-xx) listed in an Evidenzverzeichnis and exactly one level (beobachtet / abgeleitet / Mandantenangabe — '⚪️ ausstehend' in place of a level fails); because there is no runtime scan, runtime behaviour (GA4 loads before consent, Google Fonts requested from Google, a page returning 404) is abgeleitet, and only what is literally in the files (code lines, config values, link targets) may be beobachtet",
         "Section 5 assigns each recipient a role: Resend, Sentry and Vercel as Auftragsverarbeiter (Art. 28) with the AVV/DPA status left open (⚪️ / question to the client, not assumed signed); Google Fonts as a self-hosting case, not as a service needing an AVV",
         "The Google Fonts finding rests on Art. 6 Abs. 1 DSGVO (transfer of the IP address to Google without a legal basis, LG München I) — it does not cite § 25 TDDDG as its legal basis, since loading a font neither stores nor reads information on the terminal device",
-        "The Prüftabelle / checklist part of the report covers the data-subject rights block (Betroffenenrechte, Art. 12–22) as its own block — at minimum the request channel and, for this site without user accounts, a short 'nicht einschlägig' for deletion/export — rather than skipping it"
+        "The Prüftabelle / checklist part of the report covers the data-subject rights block (Betroffenenrechte, Art. 12–22) as its own block — at minimum the request channel and, for this site without user accounts, a short 'nicht einschlägig' for deletion/export — rather than skipping it",
+        "The right to object (Art. 21) is treated as applicable, not 🟢/'nicht einschlägig': server logs, Sentry and the contact form rest on Art. 6 Abs. 1 lit. f, so the DSE needs the highlighted Art. 21 notice"
       ],
       "grader_args": [
         "--expect",
@@ -57,7 +58,8 @@
         "The report names the state after withdrawal of consent (nach Widerruf) as not scanned — whether withdrawing removes the Hotjar cookie and stops the script is open; a recommendation to 'also test withdrawal' without saying it was not covered fails",
         "The missing /impressum and /datenschutz pages (404 in the scan) are flagged as 🔴 — links exist but the targets do not",
         "The output ends with the RDG disclaimer and does not call the site 'abmahnsicher'",
-        "Evidence levels match the scan: only what the scan JSON shows (requests, origins, clicked button, HTTP status) is beobachtet; consequences not visible in the scan — Hotjar session recording actually running, persistence across reloads, what Hotjar collects — are marked abgeleitet"
+        "Evidence levels match the scan: only what the scan JSON shows (requests, origins, clicked button, HTTP status) is beobachtet; consequences not visible in the scan — Hotjar session recording actually running, persistence across reloads, what Hotjar collects — are marked abgeleitet",
+        "Claims about what happens after a reload or on later page views are correct for this fixture: nothing in index.html reads the `_hj` cookie or a stored choice on load, so Hotjar does not reload by itself on the next page view — a report that says Hotjar 'läuft weiter' or 'lässt sich nicht abstellen' without code that re-loads it fails"
       ]
     },
     {
@@ -110,7 +112,8 @@
         "The Datenschutzerklärung contains the 'Pflicht zur Bereitstellung' statement (Art. 13(2)(e): which fields are required for the contact form and what happens without them)",
         "Both files carry a Stand date; the RDG note is delivered either in the chat answer or in a block inside the file that is clearly marked as internal / not for publication",
         "No client fact is filled in that neither INTAKE.md nor the code states: no Handwerkskammer, Berufsbezeichnung, Aufsichtsbehörde for the trade or VSBG willingness ('bereit' / 'nicht bereit') inferred from location or trade — missing mandatory items are asked for instead",
-        "Technical claims in the Datenschutzerklärung that the code and INTAKE.md do not prove (e.g. 'Die Website wird über HTTPS/TLS ausgeliefert' — the code only proves TLS for SMTP) are either left out or listed in the chat answer as 'vor Veröffentlichung prüfen'; per SKILL.md Phase 5 a claim that is listed there passes, an unlisted one fails"
+        "Technical claims in the Datenschutzerklärung that the code and INTAKE.md do not prove (e.g. 'Die Website wird über HTTPS/TLS ausgeliefert' — the code only proves TLS for SMTP) are either left out or listed in the chat answer as 'vor Veröffentlichung prüfen'; per SKILL.md Phase 5 a claim that is listed there passes, an unlisted one fails",
+        "Any retention period stated under § 147 AO / § 257 HGB is current: invoices and Buchungsbelege 8 years (since 2025), Geschäftsbriefe 6 years, books and annual accounts 10 years — '10 Jahre' for invoices or '6 bzw. 10 Jahre' without the 8-year class fails; no statement at all passes"
       ],
       "grader_args": [
         "--expect-no",
@@ -189,6 +192,43 @@
         "Art\\. 17",
         "--expect",
         "§ 147 AO|§ 257 HGB",
+        "--expect-no",
+        "abmahnsicher"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "rpc-delete-hidden-gaps",
+      "prompt": "Das Kundenportal einer Sprachschule (Next.js + Supabase, Kursanmeldung, Nachrichten an Lehrkräfte, Newsletter) geht nächste Woche live. Code: evals/files/supabase-rpc-delete. Bitte auf Datenschutz prüfen und den Audit-Bericht schreiben.",
+      "expected_output": "A German audit report that follows the delete flow into the SQL function: delete_my_account() deletes the auth user (cascade to profiles, enrollments; invoices kept with profile_id set null — correct under § 147 AO) but messages (no FK), waitlist (email only), and audit_log (email written into meta by the delete function itself) survive; Brevo contact and PostHog person are not deleted; the DSE promise that messages are 'anonymisiert' is not implemented. RLS with policies, Brevo double opt-in and the avatar removal are correct and must not be reported as defects.",
+      "files": [
+        "evals/files/supabase-rpc-delete/package.json",
+        "evals/files/supabase-rpc-delete/.env.example",
+        "evals/files/supabase-rpc-delete/supabase/migrations/001_init.sql",
+        "evals/files/supabase-rpc-delete/supabase/migrations/002_delete_account.sql",
+        "evals/files/supabase-rpc-delete/app/api/account/delete/route.ts",
+        "evals/files/supabase-rpc-delete/app/datenschutz/page.tsx",
+        "evals/files/supabase-rpc-delete/lib/newsletter.ts",
+        "evals/files/supabase-rpc-delete/lib/analytics.ts",
+        "evals/files/supabase-rpc-delete/lib/supabase-server.ts"
+      ],
+      "expectations": [
+        "A report file matching datenschutz-audit-*.md is written with the eight Phase-4 sections in order, and its Prüftabelle has a Betroffenenrechte block (Art. 12–22)",
+        "The delete flow is traced into supabase/migrations/002_delete_account.sql: delete_my_account() deletes the row in auth.users, which cascades to profiles and enrollments, while invoices keep their row with profile_id set null — and the report treats keeping invoices as justified by § 147 AO / § 257 HGB (not as a deletion defect)",
+        "The messages table is identified as surviving account deletion because sender_id/recipient_id have no foreign key — message bodies (which can contain names and personal details) stay, and the pg_cron job only removes them after 3 years",
+        "The DSE sentence that messages are 'anonymisiert' is flagged as not implemented in the code (no anonymisation step; sender_id and body remain) — inaccurate information (Art. 12/13) with a fix (anonymise/redact in delete_my_account or change the statement)",
+        "The audit_log is flagged: delete_my_account() itself writes the user's e-mail into audit_log.meta on deletion, with no retention period — the deletion creates a new personal-data record that outlives the account",
+        "The waitlist (e-mail + course, no link to accounts, no deletion period) is flagged as needing a retention period / deletion, and as not reached by account deletion",
+        "Deletion does not reach the recipients (Art. 17 Abs. 2 / Art. 19): the Brevo contact and the PostHog person (identified server-side with the e-mail in lib/analytics.ts) are both named",
+        "PostHog server-side identify with the e-mail is assessed: processor with AVV, EU host (eu.i.posthog.com, region marked to verify), and a legal basis for tracking logged-in users (consent or a documented lit. f balancing) — not silently accepted",
+        "No false positives: RLS is enabled with policies on the user-facing tables (waitlist/audit_log readable only by the service role), Brevo uses double opt-in via createDoiContact with unsubscribe handled by Brevo, and the avatar is removed from Storage on deletion — none of these is reported as a defect",
+        "The Management Summary states the evidence level as code only, every 🔴/🟠 finding has an E-xx evidence line with exactly one level, vendor facts carry a source with date or a per-fact '(prüfen)', and the report ends with the RDG disclaimer"
+      ],
+      "grader_args": [
+        "--expect",
+        "delete_my_account",
+        "--expect",
+        "Art\\. 17",
         "--expect-no",
         "abmahnsicher"
       ]

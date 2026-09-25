@@ -52,7 +52,7 @@ Stand: [DATUM]
 
 ### Prüfhinweise
 - **Kein Link mehr auf die EU-OS-Plattform** (ec.europa.eu/consumers/odr). Die Plattform wurde zum 20.07.2025 abgeschaltet (VO (EU) 2024/3228); ein Link ist irreführend und abmahnfähig. In Bestands-Impressen und AGB **entfernen**.
-- § 36 VSBG: Hinweispflicht gilt für Unternehmen mit > 10 Beschäftigten (Stichtag 31.12. des Vorjahres); kleinere dürfen ihn weglassen — er schadet aber nicht und wird oft erwartet. „Verpflichtet“ ergibt sich aus Gesetz/Branche; **„bereit“ ist eine Erklärung des Mandanten** — nie selbst einsetzen, sondern fragen. Ohne Antwort und bei ≤ 10 Beschäftigten: Satz weglassen und im Chat begründen.
+- § 36 VSBG: Hinweispflicht gilt für Unternehmen mit > 10 Beschäftigten (Stichtag 31.12. des Vorjahres); kleinere dürfen ihn weglassen — er schadet aber nicht und wird oft erwartet. „Verpflichtet“ ergibt sich aus Gesetz/Branche; **„bereit“ ist eine Erklärung des Mandanten** — nie selbst einsetzen, sondern fragen. Ohne Antwort und bei ≤ 10 Beschäftigten: Satz weglassen und im Chat begründen. Erklärt sich der Mandant **bereit** (oder ist er aus Branchenrecht verpflichtet), gehört der Hinweis mit zuständiger Stelle ins Impressum — unabhängig von der Beschäftigtenzahl (§ 36 Abs. 1 Nr. 2 VSBG).
 - Von jeder Unterseite in max. 2 Klicks erreichbar, Bezeichnung exakt „Impressum“
 - Auch in Landingpages/Kampagnenseiten und auf Social-Profilen verlinken
 - Bei mehreren Sprachversionen: Impressum in jeder Sprache (Übersetzung der Pflichtangaben, Rechtsform nicht „übersetzen“)

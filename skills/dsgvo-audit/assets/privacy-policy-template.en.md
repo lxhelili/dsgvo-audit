@@ -84,7 +84,7 @@ Retention: until the account is deleted; thereafter [X DAYS] for winding-up, sta
 
 **[MODULE payment processing]**
 ### 10. Payment processing
-Payments are processed via [STRIPE / PAYPAL / MOLLIE — COMPANY, ADDRESS, COUNTRY]. The payment service provider processes your payment data under its own responsibility; we receive only a confirmation, the amount and a transaction ID. Legal basis: Art. 6(1)(b) GDPR. Third-country transfer: [mechanism]. Provider's privacy policy: [URL]. Retention of booking records: 10 years (Section 147 of the German Fiscal Code (AO), Section 257 of the German Commercial Code (HGB)).
+Payments are processed via [STRIPE / PAYPAL / MOLLIE — COMPANY, ADDRESS, COUNTRY]. The payment service provider processes your payment data under its own responsibility; we receive only a confirmation, the amount and a transaction ID. Legal basis: Art. 6(1)(b) GDPR. Third-country transfer: [mechanism]. Provider's privacy policy: [URL]. Retention of invoices and accounting records: 8 years from the end of the calendar year (Section 147 of the German Fiscal Code (AO), Section 257 of the German Commercial Code (HGB)).
 
 **[MODULE newsletter]**
 ### 11. Newsletter

@@ -3,7 +3,7 @@ name: dsgvo-audit
 description: Audit a website, web app or codebase for DSGVO/GDPR, TDDDG (cookie consent) and DDG (Impressum) compliance under German law, tracing personal data from browser to backend to third parties, and generate or fix the Datenschutzerklärung, Impressum, cookie banner and consent gating. Use when the user shares a site or repo for review, asks whether a site is "legally OK" or "abmahnsicher", or mentions Datenschutz, DSGVO, GDPR, Datenschutzerklärung, Privacy Policy, Impressum, Cookie-Banner, Consent, TDDDG, AVV/DPA, Auftragsverarbeitung, Drittlandtransfer or Abmahnung, even casually ("check this site", "add datenschutz"). Also use when a third-party service is added to a client site (analytics, fonts, maps, captcha, pixel, embeds, booking, newsletter, AI/LLM API, chat widget, payment, social login) or the user asks whether it is allowed. Not for ordinary dev work that merely uses Supabase, Vercel or Resend without a compliance question.
 license: MIT
 metadata:
-  version: "1.3.1"
+  version: "1.3.2"
   law-stand: "2026-09"
   repository: https://github.com/lxhelili/dsgvo-audit
 ---
@@ -124,7 +124,7 @@ If the site belongs to a Heilberuf, Pflege/Therapie, Apotheke or aesthetic pract
 
 ### Phase 4 — Report
 
-Write `datenschutz-audit-<domain>-<YYYY-MM-DD>.md` (for client delivery: `scripts/render-report.mjs` → HTML, `--pdf` → PDF) with exactly this structure:
+Write `datenschutz-audit-<domain>-<YYYY-MM-DD>.md` (for client delivery: `scripts/render-report.mjs` → HTML, `--pdf` → PDF) with exactly this structure — the eight headings verbatim even when the user asks for a short report („Kurzbericht reicht“): shorten the content of each section, not the heading, so the report stays checkable:
 
 1. **Management Summary** — max 5 bullets, Ampel status, top 3 risks in plain German, one sentence on evidence level (code + runtime scan / URL only / description only) and what it did not cover — say it in these words when a runtime scan ran: „Gescannt: <Seite(n)> in <Zuständen>. Ein Scan erfasst nur diese Seite(n); Unterseiten (Kontakt, Buchung, Checkout …) brauchen einen eigenen Scan.“ and name the states it did not cover — the scanner has no „nach Widerruf“ phase, so whether withdrawing consent removes cookies and stops scripts is always unscanned — plus GTM container, server side, a missing live URL
 2. **Kritische und hohe Befunde** — one block per finding (format below)
@@ -158,6 +158,8 @@ Evidence level per finding — the claim in the Befund, not the tool, decides:
 - **Mandantenangabe** — rests on what the client said (AVV signed, retention, headcount). Never upgrade it to beobachtet.
 
 One level per finding. If the parts of a Befund rest on different levels (the SDK call is in the code, the region it sends to is inferred), split the finding or name the level per sentence — never „beobachtet; Region abgeleitet“ on one Evidenz line. „Mandantenangabe ausstehend“ is not a level: the finding is abgeleitet (or beobachtet) and the missing client answer goes into the open questions. With a runtime scan, only what the scan JSON contains is beobachtet — requests, origins, cookies with their attributes, the button clicked, HTTP status. Anything the scan cannot show is abgeleitet even when a scan ran: behaviour after a reload or on the next page view, what a vendor script records or sends later (session recording, keystrokes), a state that was not scanned.
+
+Claims about what happens later — after a reload, on the next page, after withdrawal — must follow from code you have read: a cookie only keeps a script running if something reads it on load (a consent check, a tag manager rule, the vendor snippet itself). If nothing in the code reads it, say so; do not write „läuft weiter“ or „lässt sich nicht abstellen“ by default. And keep the chat answer consistent with the report: when a finding establishes what is (not) transmitted — e.g. only the file name because `enctype` is missing — the summary in chat must say the same, not the naive version.
 
 ### Phase 5 — Remediation (only when asked to fix, not just audit)
 

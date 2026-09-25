@@ -71,6 +71,21 @@ console.log('grade-report against golden fixtures:');
   unlinkSync(tmp);
 }
 {
+  // A clean report with no 🔴/🟠 block passes the finding checks only when section 2 says so in words
+  const { writeFileSync, readFileSync, unlinkSync } = await import('node:fs');
+  const tmp = join(ROOT, 'dist-grade-test.md');
+  const golden = readFileSync(join(FIX, 'good-report.md'), 'utf8');
+  const s2 = golden.indexOf('## 2.'), s3 = golden.indexOf('## 3.');
+  const stripped = golden.slice(0, s2) + '## 2. Kritische und hohe Befunde\n\n';
+  writeFileSync(tmp, stripped + 'Keine kritischen oder hohen Befunde.\n\n' + golden.slice(s3));
+  let r = await grade('--report', tmp);
+  check(!/❌ Every 🔴\/🟠 finding (block|cites|names)/.test(r.out), 'no 🔴/🟠 block + „Keine kritischen … Befunde“ in section 2 passes the finding checks');
+  writeFileSync(tmp, stripped + '| Befund | Stufe |\n|---|---|\n| GA vor Consent | 🔴 |\n\n' + golden.slice(s3));
+  r = await grade('--report', tmp);
+  check(/❌ Every 🔴\/🟠 finding block has Befund/.test(r.out), 'findings only as table rows (no declaration) still fail');
+  unlinkSync(tmp);
+}
+{
   // Art. 7 Abs. 3 is required only where something rests on consent (a consent-free DSE on lit. f need not list it)
   const { writeFileSync, readFileSync, unlinkSync } = await import('node:fs');
   const tmp = join(ROOT, 'dist-grade-dse-test.md');
