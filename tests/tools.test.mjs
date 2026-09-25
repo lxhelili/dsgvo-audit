@@ -133,6 +133,8 @@ const clean = () => { if (existsSync(OUT)) unlinkSync(OUT); };
   const prMd = run('list-processors.mjs', [HAR, LINT, GTM, '--md']);
   check(/AVV\/DPA Resend/.test(prMd.stdout) && /Art\. 28 Abs\. 3/.test(prMd.stdout), '--md lists the AVVs to request and the Art. 28(3) contents');
   check(/⚪️ Mandant/.test(prMd.stdout) && !/✅/.test(prMd.stdout), 'contract status is never claimed — always ⚪️ for the client to confirm');
+  const resendRow = prMd.stdout.split('\n').find((l) => l.startsWith('| Resend'));
+  check((resendRow?.match(/\(prüfen\)/g) || []).length === 2, 'each vendor fact (contract, region) carries its own (prüfen) mark, not only a footnote');
   const { SIGNATURES } = await import(join(SCRIPTS, 'lib', 'signatures.mjs'));
   const { lookup } = await import(join(SCRIPTS, 'lib', 'processors.mjs'));
   const unmapped = [...new Set(SIGNATURES.map(([, n]) => n))].filter((n) => !lookup(n));

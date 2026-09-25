@@ -66,9 +66,11 @@ const cell = (s) => String(s).replace(/\|/g, '\\|');
 if (argv.includes('--md')) {
   console.log('| Dienst | Rolle | Vertrag | Sitz / Region | Drittland-Mechanismus | Evidenz | Vertrag liegt vor? |');
   console.log('|---|---|---|---|---|---|---|');
-  for (const r of recipients) console.log(`| ${cell(r.names.join(' / '))} | ${ROLE_LABEL[r.role]} | ${cell(r.contract)} | ${cell(r.region)} | ${cell(r.transfer)} | ${ids(r.evidence)} | ${CONTRACT_STATUS[r.role]} |`);
+  // vendor facts come from the skill's mapping, not from the vendor — mark each one where it stands
+  const vf = (s) => `${cell(s)} (prüfen)`;
+  for (const r of recipients) console.log(`| ${cell(r.names.join(' / '))} | ${ROLE_LABEL[r.role]} | ${vf(r.contract)} | ${vf(r.region)} | ${cell(r.transfer)} | ${ids(r.evidence)} | ${CONTRACT_STATUS[r.role]} |`);
   for (const u of result.unknown) console.log(`| ${cell(u.name)} | ⚪️ Rolle klären | — | — | — | ${ids(u.evidence)} | ⚪️ Mandant |`);
-  console.log('\n_Rolle, Vertrag und Region sind eine generische Zuordnung — vor Auslieferung beim Anbieter prüfen; DPF-Status nur über https://www.dataprivacyframework.gov/list für die konkrete Entität. Nicht aus Scans erkennbar und daher zu ergänzen: Hoster, Postfach-Anbieter, Datenbank-Hoster und alle Empfänger aus Datenfluss und Intake._');
+  console.log('\n_Rolle, Vertrag und Region sind eine generische Zuordnung aus der Skill-Liste, keine Anbieterangabe — jede mit „(prüfen)“ markierte Angabe beim Anbieter verifizieren und im Bericht entweder mit Quelle + Abrufdatum belegen oder die Markierung stehen lassen; DPF-Status nur über https://www.dataprivacyframework.gov/list für die konkrete Entität. Nicht aus Scans erkennbar und daher zu ergänzen: Hoster, Postfach-Anbieter, Datenbank-Hoster und alle Empfänger aus Datenfluss und Intake._');
   const av = recipients.filter((r) => r.role === 'AV');
   const jc = recipients.filter((r) => r.role === 'Art. 26');
   if (av.length || jc.length || result.unknown.length) {

@@ -6,6 +6,22 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.3.1] – 2026-09-25
+
+### Fixed
+
+- `SKILL.md` finding-format example (K-01 Google Fonts) no longer cites § 25 Abs. 1 TDDDG — loading a font neither stores nor reads anything on the device; the finding rests on Art. 6 Abs. 1 DSGVO and LG München I. The example was the source of a wrong legal basis in iteration-6 runs.
+- `assets/impressum-template.md`: the § 36 VSBG sentence no longer pre-fills „nicht bereit“ — willingness is the client's declaration; without an answer and at ≤ 10 employees the sentence is omitted and the omission explained.
+- `references/recht.md`, `gesundheit.md`: DSFA and DSB for a single practice both cite ErwG 91, ask for a documented threshold analysis and the facts that would change it; an open DSFA/DSB question is ⚪️, not 🟠 — „im Zweifel bestellen“ removed.
+
+### Changed
+
+- Evidence levels (`SKILL.md` Phase 4): one level per finding — split findings whose parts differ; „Mandantenangabe ausstehend“ is not a level; with a runtime scan only what the scan JSON contains is beobachtet, reload/persistence and what a vendor script records later are abgeleitet.
+- Management Summary names the states a scan did not cover, always including „nach Widerruf“ (the scanner has no withdrawal phase).
+- Every concrete vendor fact (storage location, retention, training, region, DPA) carries a dated source or a per-fact „(prüfen)“ — a generic footnote no longer counts. `list-processors.mjs --md` marks contract and region per cell.
+- `checklist.md` section 6: read form attributes before saying what is transmitted — a file input without `enctype="multipart/form-data"` sends only the file name; `method="get"` puts every field in the URL.
+- Measured in `evals/results/1.3.1-iteration-7.md`: 150/152 vs 139/152 against 1.3.0 (two runs each), no eval regresses; the iteration-6 failures shared by every run (abgeleitet never used, withdrawal state unnamed, vendor facts from memory) are gone. Eval set: new eval 6 `member-portal-rights`, sharper expectations for evals 1–5 (`evals/results/1.3.0-iteration-6.md`).
+
 ## [1.3.0] – 2026-09-25
 
 ### Added
@@ -140,7 +156,8 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.1...v1.2.2

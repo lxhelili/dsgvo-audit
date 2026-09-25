@@ -49,7 +49,7 @@ Konservative Regel (R), siehe SKILL.md Regel 4: kein US-Dienst im Pfad von Gesun
 ## 6. DSFA, DSB, Aufbewahrung
 
 - **DSFA (Art. 35)**: Umfangreiche Verarbeitung von Gesundheitsdaten steht auf den Muss-Listen der Aufsichtsbehörden. Die Einzelpraxis ist nach ErwG 91 in der Regel **nicht** umfangreich; MVZ, Klinik, Praxisketten, Plattformen, KI-Triage schon. Im Bericht: Schwellwertanalyse dokumentieren lassen, nicht pauschal „DSFA nötig“.
-- **DSB**: § 38 BDSG ab 20 Personen mit regelmäßiger automatisierter Verarbeitung; unabhängig davon Art. 37 Abs. 1 lit. c bei umfangreicher Art.-9-Kerntätigkeit — für die Einzelpraxis nach ErwG 91 meist nein, für MVZ/Klinik meist ja. Begründung ins VVT.
+- **DSB**: § 38 BDSG ab 20 Personen mit regelmäßiger automatisierter Verarbeitung; unabhängig davon Art. 37 Abs. 1 lit. c bei umfangreicher Art.-9-Kerntätigkeit — für die Einzelpraxis nach ErwG 91 meist nein, für MVZ/Klinik meist ja. Begründung ins VVT. ErwG 91 im Bericht für DSFA **und** DSB nennen; eine offene DSFA-/DSB-Frage ist ⚪️ (Mandantenfrage), kein 🟠.
 - **Aufbewahrung**: Patientenakte 10 Jahre nach Abschluss der Behandlung (§ 630f Abs. 3 BGB; Berufsordnungen entsprechend). Terminanfragen, aus denen keine Behandlung wird, fallen **nicht** darunter → kurze Frist im Löschkonzept (`assets/loeschkonzept-template.md`).
 
 ## 7. Impressum und Werbung

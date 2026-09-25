@@ -23,10 +23,12 @@
         "vercel.json regions ['iad1'] is flagged: functions run in the US; recommendation fra1 (and the note that Edge Middleware is global regardless)",
         "The hidden utm_source field forwarded in the mail is mentioned as marketing data that the DSE must cover",
         "The Management Summary states the evidence level as 'code only / no runtime scan / no live URL' or equivalent, and the report does not claim to know what the CMP does at runtime",
-        "The report never uses the words 'abmahnsicher' or '100 % konform' and ends with the RDG disclaimer from references/recht.md",
+        "The report never makes its own compliance claim with 'abmahnsicher' or '100 % konform' (a warning against using such labels is fine) and the report file ends with the RDG disclaimer from references/recht.md",
         "No Datenschutzerklärung is generated (the user asked for an audit only)",
-        "Every 🔴/🟠 finding carries an evidence line with an ID (E-xx) listed in an Evidenzverzeichnis and a level (beobachtet / abgeleitet / Mandantenangabe); because there is no runtime scan, the findings about runtime behaviour — GA4 loads before consent, Google Fonts are requested from Google — are marked abgeleitet (inferred from code), not beobachtet",
-        "Section 5 assigns each recipient a role: Resend, Sentry and Vercel as Auftragsverarbeiter (Art. 28) with the AVV/DPA status left open (⚪️ / question to the client, not assumed signed); Google Fonts as a self-hosting case, not as a service needing an AVV"
+        "Every 🔴/🟠 finding carries an evidence line with an ID (E-xx) listed in an Evidenzverzeichnis and exactly one level (beobachtet / abgeleitet / Mandantenangabe — '⚪️ ausstehend' in place of a level fails); because there is no runtime scan, runtime behaviour (GA4 loads before consent, Google Fonts requested from Google, a page returning 404) is abgeleitet, and only what is literally in the files (code lines, config values, link targets) may be beobachtet",
+        "Section 5 assigns each recipient a role: Resend, Sentry and Vercel as Auftragsverarbeiter (Art. 28) with the AVV/DPA status left open (⚪️ / question to the client, not assumed signed); Google Fonts as a self-hosting case, not as a service needing an AVV",
+        "The Google Fonts finding rests on Art. 6 Abs. 1 DSGVO (transfer of the IP address to Google without a legal basis, LG München I) — it does not cite § 25 TDDDG as its legal basis, since loading a font neither stores nor reads information on the terminal device",
+        "The Prüftabelle / checklist part of the report covers the data-subject rights block (Betroffenenrechte, Art. 12–22) as its own block — at minimum the request channel and, for this site without user accounts, a short 'nicht einschlägig' for deletion/export — rather than skipping it"
       ],
       "grader_args": [
         "--expect",
@@ -51,9 +53,11 @@
         "Hotjar (static.hotjar.com) is identified as loading only after 'Alle akzeptieren' and is listed as a consent-required service (§ 25 TDDDG, Art. 6 Abs. 1 lit. a) that belongs in the Datenschutzerklärung — with the session-recording risk note",
         "The report confirms that the first layer has a reject option ('Nur notwendige akzeptieren') and that no new third-party requests fire after it",
         "The report notes that the accept phase clicked 'Alle akzeptieren' (not the 'Nur notwendige' button) — i.e. the service inventory is complete",
-        "The report says which page/state was scanned and that subpages must be scanned separately (one scan is one page, one state, one moment)",
+        "The report says which page and which states were scanned (vor Einwilligung, nach Ablehnen, nach Akzeptieren) and that subpages need their own scan",
+        "The report names the state after withdrawal of consent (nach Widerruf) as not scanned — whether withdrawing removes the Hotjar cookie and stops the script is open; a recommendation to 'also test withdrawal' without saying it was not covered fails",
         "The missing /impressum and /datenschutz pages (404 in the scan) are flagged as 🔴 — links exist but the targets do not",
-        "The output ends with the RDG disclaimer and does not call the site 'abmahnsicher'"
+        "The output ends with the RDG disclaimer and does not call the site 'abmahnsicher'",
+        "Evidence levels match the scan: only what the scan JSON shows (requests, origins, clicked button, HTTP status) is beobachtet; consequences not visible in the scan — Hotjar session recording actually running, persistence across reloads, what Hotjar collects — are marked abgeleitet"
       ]
     },
     {
@@ -74,10 +78,11 @@
         "The Calendly widget.js loaded on page load (script tag at the end of termin.html, before any user action) is flagged as a third-party load before any consent (🔴)",
         "No Datenschutzerklärung is generated in this turn; instead the Phase-2 intake questions are asked in one batch (Verantwortlicher, Kammer/Berufsbezeichnung, hosting, processors/AVVs, DSB, retention)",
         "The response does not invent a Kammer, register number, or hosting provider for the practice",
-        "The response distinguishes 'rechtswidrig' from 'konservative Regel' in its wording and ends with the RDG disclaimer",
-        "Vendor facts obtained by web research (e.g. Formspree storage location, DPA availability, DPF status) carry their source and date or are marked as to be verified — not stated as plain fact",
+        "The response distinguishes 'rechtswidrig' from 'konservative Regel' in its wording, and the final chat answer (not only a report file) contains the RDG disclaimer or an explicit 'keine Rechtsberatung (RDG)' line",
+        "Every concrete vendor fact — whether from web research or from memory (e.g. Formspree storage location or retention, Calendly DPA availability, DPF status) — carries a source with a date or is explicitly marked as to be verified; a vendor fact stated as plain fact without either fails",
         "The § 203 StGB point covers every service provider that can see the content — hoster, form backend or booking tool, mailbox provider and the agency with admin access — with the confidentiality obligation of § 203 Abs. 4 StGB, not only the US services",
-        "The DSFA/DSB assessment is proportionate: for a single practice it asks for a documented threshold analysis (a single physician's practice is usually not 'large-scale', ErwG 91) instead of declaring a DSFA or a DSB mandatory across the board"
+        "The DSFA/DSB assessment is proportionate and cites ErwG 91 for both: a single physician's practice is usually not 'umfangreich', so the response asks for a documented threshold analysis (Schwellwertanalyse) and the facts that would change it (Anzahl Personen, § 38 BDSG 20-Personen-Schwelle) — an open DSFA/DSB question rated 🟠 or 🔴, or 'DSFA durchführen' / 'im Zweifel DSB bestellen' as the recommendation, fails",
+        "The response notices that the form in termin.html has no enctype=\"multipart/form-data\", so as written the browser sends only the file name, not the photo — and states that the photo would reach Formspree (Art. 9 image data) once the form is fixed; a response that states as fact that the photo currently reaches Formspree fails"
       ]
     },
     {
@@ -98,13 +103,14 @@
         "The Datenschutzerklärung contains NO module for Google Fonts, Google Analytics, YouTube, Maps, Newsletter, Bewerbungen, Nutzerkonto, Zahlungen or KI — none of these exist in the code (fonts are @fontsource, i.e. self-hosted)",
         "Plausible is described on Art. 6 Abs. 1 lit. f DSGVO as cookieless with the berechtigtes Interesse named, EU hosting and the DPA mentioned — not on consent, and not omitted",
         "Hosting names Hetzner Online GmbH with the AVV, server-log fields, and the 7-day retention from INTAKE.md",
-        "The Kontaktformular module lists exactly the fields in kontakt.astro (Name, E-Mail, Nachricht — the honeypot is not a data field), names the mailbox/SMTP as the recipient, Art. 6 Abs. 1 lit. b/f, and the 6-month retention from INTAKE.md",
+        "The Kontaktformular module lists the fields in kontakt.astro (Name, E-Mail, Nachricht) and no other form field — derived metadata such as the time of sending is fine, the honeypot must not be listed as a data field — names the mailbox/SMTP as the recipient, Art. 6 Abs. 1 lit. b/f, and the 6-month retention from INTAKE.md",
         "The cookies section states that no consent-requiring cookies or storage are used (no CMP needed) — consistent with the code",
         "The Art. 21 Widerspruchsrecht is visually highlighted (blockquote/bold) and the Beschwerderecht names the LDI NRW as the supervisory authority for a Solingen company",
         "The Impressum contains the HRB number, Amtsgericht Wuppertal, USt-IdNr., Vertretungsberechtigter and no OS-Plattform link; the § 36 VSBG sentence is present or its omission is justified by ≤ 10 employees",
         "The Datenschutzerklärung contains the 'Pflicht zur Bereitstellung' statement (Art. 13(2)(e): which fields are required for the contact form and what happens without them)",
-        "Both files carry a Stand date and the RDG note is delivered with them",
-        "Nothing is filled into the Impressum or the Datenschutzerklärung that neither INTAKE.md nor the code states — in particular no Handwerkskammer, Berufsbezeichnung or Aufsichtsbehörde for the trade inferred from the location; missing mandatory items are asked for instead"
+        "Both files carry a Stand date; the RDG note is delivered either in the chat answer or in a block inside the file that is clearly marked as internal / not for publication",
+        "No client fact is filled in that neither INTAKE.md nor the code states: no Handwerkskammer, Berufsbezeichnung, Aufsichtsbehörde for the trade or VSBG willingness ('bereit' / 'nicht bereit') inferred from location or trade — missing mandatory items are asked for instead",
+        "Technical claims in the Datenschutzerklärung that the code and INTAKE.md do not prove (e.g. 'Die Website wird über HTTPS/TLS ausgeliefert' — the code only proves TLS for SMTP) are either left out or listed in the chat answer as 'vor Veröffentlichung prüfen'; per SKILL.md Phase 5 a claim that is listed there passes, an unlisted one fails"
       ],
       "grader_args": [
         "--expect-no",
@@ -137,11 +143,54 @@
         "The triage into 'einfach / komplex / abgelehnt' is identified as a potential Art. 22 DSGVO automated decision (esp. 'abgelehnt') and human review / DSE disclosure is required",
         "The unlimited storage of full transcripts in Supabase chat_logs is flagged (no retention/deletion, Art. 5 Abs. 1 lit. e), with a concrete retention proposal",
         "The response notes that tax-related chat input can carry special-category data (e.g. Kirchensteuer → religion; Behinderten-Pauschbetrag → health) and applies the conservative rule for Art. 9 input to a US LLM, marked as a rule",
-        "A dedicated DSE module for the KI-Funktion is required and its contents listed (provider, purpose, data, retention, transfer, Art. 22 statement)",
+        "The KI-Funktion is covered in the Datenschutzerklärung either by a delivered draft module or by an explicit list naming all six items: provider, purpose, data categories, retention, third-country transfer, and the Art. 22 statement on the triage",
         "The localStorage 'chat-session' key is assessed under § 25 TDDDG with a justification either way (technically necessary for the chosen function vs. not)",
-        "Time-sensitive facts (OpenAI DPF status, EU-region availability) are marked as 'verify' / checked via WebSearch rather than asserted from memory",
-        "The response ends with the RDG disclaimer and does not call the setup 'konform' without conditions",
+        "Every concrete OpenAI retention or residency fact (e.g. 30-day abuse-monitoring logs, eu.api.openai.com / EU data residency, zero-data-retention prerequisites) carries either a fetched vendor source with a retrieval date or an explicit 'verify' mark on that fact — a generic 'beim Anbieter prüfen' footnote while the table states the fact plainly fails",
+        "The final chat answer contains the RDG disclaimer (not only the report's section 8) and does not call the setup 'konform' without conditions",
         "Any statement about the DPF status of OpenAI or Supabase is either absent (replaced by 'verify on dataprivacyframework.gov/list for the specific entity') or taken from that official list with a date — no DPF verdict built on a secondary website"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "member-portal-rights",
+      "prompt": "Unser Kunde, ein Yogastudio, bekommt einen Mitgliederbereich mit Konto, Kursbuchung, Zahlungen über Stripe und Newsletter (Next.js + Supabase). Der Code liegt in evals/files/nextjs-member-portal. Bitte vor dem Launch auf Datenschutz prüfen und den Audit-Bericht schreiben.",
+      "expected_output": "A German audit report in the Phase-4 structure that traces the account lifecycle, not only the forms: the 'Konto löschen' route deletes only the profiles row (auth user, avatars and invoice PDFs in Storage, Brevo contact, Stripe customer and Sentry user context remain) while the cascade hard-deletes invoices that must be kept (§ 147 AO / § 257 HGB → Sperrung, Art. 17 Abs. 3 lit. b / Art. 18). The DSE promise of complete deletion contradicts the code. The health-notes field is Art. 9. Newsletter mails have no unsubscribe link or List-Unsubscribe header, there is no persistent Cookie-Einstellungen link, no data export, and rights requests go only to a contact form. Correctly gated Meta Pixel is not reported as a pre-consent load. Evidence level: code only.",
+      "files": [
+        "evals/files/nextjs-member-portal/package.json",
+        "evals/files/nextjs-member-portal/.env.example",
+        "evals/files/nextjs-member-portal/supabase/migrations/001_init.sql",
+        "evals/files/nextjs-member-portal/app/api/account/delete/route.ts",
+        "evals/files/nextjs-member-portal/app/konto/page.tsx",
+        "evals/files/nextjs-member-portal/app/layout.tsx",
+        "evals/files/nextjs-member-portal/app/datenschutz/page.tsx",
+        "evals/files/nextjs-member-portal/components/CookieBanner.tsx",
+        "evals/files/nextjs-member-portal/components/DeleteButton.tsx",
+        "evals/files/nextjs-member-portal/lib/newsletter.ts",
+        "evals/files/nextjs-member-portal/lib/supabase-server.ts"
+      ],
+      "expectations": [
+        "A report file matching datenschutz-audit-*.md is written with the eight Phase-4 sections in order, and its Prüftabelle has a Betroffenenrechte block (Art. 12–22) that assesses deletion, access/export, rectification, objection/withdrawal and the request channel individually",
+        "The delete flow in app/api/account/delete/route.ts is flagged (🔴 or 🟠, Art. 17) because it deletes only the profiles row: the Supabase auth user in auth.users remains (the FK cascades from auth.users to profiles, not the other way), so e-mail and login survive — with the file reference",
+        "The report states that Storage objects are not deleted: the avatar (avatar_path, bucket 'avatars') and the invoice PDFs (pdf_path, bucket 'invoices') remain after 'Konto löschen'",
+        "The report states that deletion does not reach the recipients (Art. 17 Abs. 2 / Art. 19): at least the Brevo contact and the Stripe customer are named, and preferably the Sentry user context",
+        "The report identifies the opposite problem in the same flow: ON DELETE CASCADE hard-deletes invoices that are subject to retention duties (§ 147 AO and/or § 257 HGB), and recommends restriction/blocking (Art. 18 or Art. 17 Abs. 3 lit. b) with a Löschkonzept instead of immediate deletion",
+        "The sentence in app/datenschutz/page.tsx that all data is 'vollständig und unwiderruflich entfernt' is flagged as contradicting the code (inaccurate information, Art. 12/13), and a corrected statement is proposed or required",
+        "The 'gesundheitshinweise' field (Verletzungen, Schwangerschaft) is recognised as Art. 9 health data needing explicit consent (Art. 9 Abs. 2 lit. a) or an equivalent basis, voluntary (optional field or opt-in), with access limited to the teachers — and the report notes where it can survive account deletion or needs its own retention (Sentry events with sendDefaultPii, backups, no deletion period while the account exists)",
+        "The missing self-service export or documented access procedure (Art. 15, Art. 20) is flagged or asked as an open question, and rectification (Art. 16) via the profile form in app/konto/page.tsx is noted as present",
+        "Newsletter: sendMonthly in lib/newsletter.ts sends without an unsubscribe link and without a List-Unsubscribe header — flagged with Art. 21 Abs. 2/3 DSGVO and/or Art. 7 Abs. 3 and § 7 UWG; the missing double opt-in in subscribe() is flagged as well",
+        "Consent withdrawal (Art. 7 Abs. 3) is flagged: the footer has no persistent 'Cookie-Einstellungen' link and the banner cannot be reopened once a choice is stored — while the Meta Pixel itself is correctly reported as loading only after 'Alle akzeptieren', not as a pre-consent load",
+        "The request channel is flagged: the DSE sends rights requests only to a contact form with no e-mail address or other channel named (Art. 12 Abs. 1–3)",
+        "Row Level Security is flagged: 001_init.sql enables RLS only on profiles, so bookings and invoices (with the service-role and anon clients) are readable across members unless policies exist — Art. 32 / Art. 5 Abs. 1 lit. f, with the file reference",
+        "Sentry with sendDefaultPii: true and Sentry.setUser({ email }) in app/layout.tsx is flagged as personal data in error tracking, with Sentry as a processor whose AVV status is open",
+        "The Management Summary states the evidence level as code only (no runtime scan, no live URL), every 🔴/🟠 finding has an E-xx evidence line with a level, and the report ends with the RDG disclaimer without calling the portal 'konform' or 'abmahnsicher'"
+      ],
+      "grader_args": [
+        "--expect",
+        "Art\\. 17",
+        "--expect",
+        "§ 147 AO|§ 257 HGB",
+        "--expect-no",
+        "abmahnsicher"
       ]
     }
   ]
