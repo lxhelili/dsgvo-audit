@@ -80,6 +80,7 @@ Jeden Abschnitt durchgehen. Pro Punkt 🔴/🟠/🟡/🟢/⚪️ mit einzeiliger
 - [ ] Datenminimierung: jedes Pflichtfeld begründbar (Art. 5(1)(c))
 - [ ] Kein Consent-Häkchen als Rechtsgrundlage, wo Art. 6(1)(b)/(f) trägt (kein „Zwangs-Consent“)
 - [ ] Übertragung TLS; Formularziel nicht im Drittland ohne Grundlage
+- [ ] Formular-Attribute lesen, bevor du sagst, was ankommt: `<input type="file">` ohne `enctype="multipart/form-data"` sendet nur den **Dateinamen**, nicht die Datei; `method="get"` (oder kein `method`) schreibt alle Felder in die URL → Server-Logs, Referrer, Browser-Verlauf. Befund dann zweiteilig: was heute übertragen wird, und was nach der naheliegenden Reparatur beim Empfänger landet
 - [ ] Newsletter: Double-Opt-In, Protokoll, Abmelde-Link, § 7 Abs. 2 Nr. 2 UWG
 - [ ] Transaktionsmails: kein Open-/Click-Tracking ohne Consent; Inhalt minimiert
 - [ ] Bewerberdaten: Zweckbindung, Löschung 6 Monate nach Absage (§ 15 Abs. 4 AGG-Logik), separate Info

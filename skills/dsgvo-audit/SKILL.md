@@ -3,7 +3,7 @@ name: dsgvo-audit
 description: Audit a website, web app or codebase for DSGVO/GDPR, TDDDG (cookie consent) and DDG (Impressum) compliance under German law, tracing personal data from browser to backend to third parties, and generate or fix the Datenschutzerklärung, Impressum, cookie banner and consent gating. Use when the user shares a site or repo for review, asks whether a site is "legally OK" or "abmahnsicher", or mentions Datenschutz, DSGVO, GDPR, Datenschutzerklärung, Privacy Policy, Impressum, Cookie-Banner, Consent, TDDDG, AVV/DPA, Auftragsverarbeitung, Drittlandtransfer or Abmahnung, even casually ("check this site", "add datenschutz"). Also use when a third-party service is added to a client site (analytics, fonts, maps, captcha, pixel, embeds, booking, newsletter, AI/LLM API, chat widget, payment, social login) or the user asks whether it is allowed. Not for ordinary dev work that merely uses Supabase, Vercel or Resend without a compliance question.
 license: MIT
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
   law-stand: "2026-09"
   repository: https://github.com/lxhelili/dsgvo-audit
 ---
@@ -120,13 +120,13 @@ Load `references/checklist.md` and work through every section. Status per item:
 | 🟢 **OK** | Conforms |
 | ⚪️ **Unklar** | Needs client input or runtime verification — say exactly what you need |
 
-If the site belongs to a Heilberuf, Pflege/Therapie, Apotheke or aesthetic practice, or any input carries health data, also load `references/gesundheit.md` (Art. 9 triggers, § 203 StGB for every service provider, booking tools, DSFA/DSB thresholds, retention, HWG). For third-party services use `references/services.md` (legal basis, consent, transfer mechanism, safer alternative). For the legal reasoning, citations and current case law use `references/recht.md`. Verify anything time-sensitive — DPF list status of a specific entity, DSFA Positivlisten, new rulings — with a web search; `references/law-watch.md` lists the open points, what would change and where to check; the references carry a "Stand" date and the law moves.
+If the site belongs to a Heilberuf, Pflege/Therapie, Apotheke or aesthetic practice, or any input carries health data, also load `references/gesundheit.md` (Art. 9 triggers, § 203 StGB for every service provider, booking tools, DSFA/DSB thresholds, retention, HWG). For third-party services use `references/services.md` (legal basis, consent, transfer mechanism, safer alternative). For the legal reasoning, citations and current case law use `references/recht.md`. Verify anything time-sensitive — DPF list status of a specific entity, DSFA Positivlisten, new rulings — with a web search; `references/law-watch.md` lists the open points, what would change and where to check; the references carry a "Stand" date and the law moves. The same for **every concrete vendor fact** — where a service stores data, for how long, whether it trains on inputs, which region is selectable, whether it offers a DPA: from a page you fetched, cite it with the date; from memory or from `services.md`/`list-processors.mjs`, mark that fact „(prüfen)“ where it stands. A generic footnote under a table that states the facts plainly does not count.
 
 ### Phase 4 — Report
 
 Write `datenschutz-audit-<domain>-<YYYY-MM-DD>.md` (for client delivery: `scripts/render-report.mjs` → HTML, `--pdf` → PDF) with exactly this structure:
 
-1. **Management Summary** — max 5 bullets, Ampel status, top 3 risks in plain German, one sentence on evidence level (code + runtime scan / URL only / description only) and what it did not cover — say it in these words when a runtime scan ran: „Gescannt: <Seite(n)> in <Zuständen>. Ein Scan erfasst nur diese Seite(n); Unterseiten (Kontakt, Buchung, Checkout …) brauchen einen eigenen Scan.“ — plus GTM container, server side, a missing live URL
+1. **Management Summary** — max 5 bullets, Ampel status, top 3 risks in plain German, one sentence on evidence level (code + runtime scan / URL only / description only) and what it did not cover — say it in these words when a runtime scan ran: „Gescannt: <Seite(n)> in <Zuständen>. Ein Scan erfasst nur diese Seite(n); Unterseiten (Kontakt, Buchung, Checkout …) brauchen einen eigenen Scan.“ and name the states it did not cover — the scanner has no „nach Widerruf“ phase, so whether withdrawing consent removes cookies and stops scripts is always unscanned — plus GTM container, server side, a missing live URL
 2. **Kritische und hohe Befunde** — one block per finding (format below)
 3. **Datenfluss-Übersicht** — table: Datum | Quelle | Verarbeitung | Empfänger | Region | Rechtsgrundlage | Vertrag | Speicherdauer (from `architecture.md`), followed by `### Evidenzverzeichnis` (output of `build-evidence.mjs` plus your own entries) and one line naming the sources and their dates
 4. **Vollständige Prüftabelle** — every checklist item with status
@@ -141,8 +141,8 @@ Finding format — keep it this tight, and say where in the code or scan the evi
 ### 🔴 K-01 Google Fonts werden zur Laufzeit von Google geladen
 **Befund:** `app/layout.tsx:12` bindet `<link href="https://fonts.googleapis.com/css2?family=Inter">` ein;
 Runtime-Scan: Requests an fonts.googleapis.com und fonts.gstatic.com vor jeder Consent-Interaktion.
-**Rechtsgrundlage:** Übermittlung der IP-Adresse an Google ohne Rechtsgrundlage (Art. 6 Abs. 1 DSGVO), § 25 Abs. 1 TDDDG;
-LG München I, 3 O 17493/20.
+**Rechtsgrundlage:** Übermittlung der IP-Adresse an Google ohne Rechtsgrundlage (Art. 6 Abs. 1 DSGVO);
+LG München I, 3 O 17493/20. (Nicht § 25 TDDDG — eine Schrift zu laden liest und speichert nichts auf dem Endgerät.)
 **Risiko:** Schadensersatz-/Abmahnmuster „Google Fonts“, automatisiert erkennbar; Reputationsschaden.
 **Maßnahme:** Font self-hosten (Build-time-Bundling oder .woff2 + @font-face), `<link>` und `preconnect` entfernen,
 CSP `font-src 'self'`.
@@ -156,6 +156,8 @@ Evidence level per finding — the claim in the Befund, not the tool, decides:
 - **beobachtet** — the evidence shows exactly what the Befund says: the request was seen before consent (scan/HAR), the code line *is* the defect (`console.log(body)`).
 - **abgeleitet** — the Befund goes one step beyond the evidence: "GA lädt vor Consent" or "Google Fonts werden zur Laufzeit geladen" from code without a runtime scan — a `<link>` in the code is observed, the request is not; a GTM trigger read from the export. Say what would confirm it.
 - **Mandantenangabe** — rests on what the client said (AVV signed, retention, headcount). Never upgrade it to beobachtet.
+
+One level per finding. If the parts of a Befund rest on different levels (the SDK call is in the code, the region it sends to is inferred), split the finding or name the level per sentence — never „beobachtet; Region abgeleitet“ on one Evidenz line. „Mandantenangabe ausstehend“ is not a level: the finding is abgeleitet (or beobachtet) and the missing client answer goes into the open questions. With a runtime scan, only what the scan JSON contains is beobachtet — requests, origins, cookies with their attributes, the button clicked, HTTP status. Anything the scan cannot show is abgeleitet even when a scan ran: behaviour after a reload or on the next page view, what a vendor script records or sends later (session recording, keystrokes), a state that was not scanned.
 
 ### Phase 5 — Remediation (only when asked to fix, not just audit)
 

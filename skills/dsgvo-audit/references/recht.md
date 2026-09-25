@@ -57,7 +57,7 @@ Praxisrelevanz: Terminanfrage bei einer Schönheitsklinik („Beratung Nasenkorr
 ## DSB-Pflicht (Art. 37 DSGVO, § 38 BDSG)
 - ≥ **20 Personen** ständig mit automatisierter Verarbeitung beschäftigt → DSB Pflicht
 - **Unabhängig von der Zahl**: Kerntätigkeit = umfangreiche Verarbeitung von Art.-9-Daten (Art. 37(1)(c)) oder umfangreiche regelmäßige systematische Überwachung (Art. 37(1)(b)); DSFA-pflichtige Verarbeitung (§ 38 Abs. 1 S. 2 BDSG)
-- Einzelpraxis / kleiner Pflegedienst: ErwG 91 nennt den einzelnen Arzt ausdrücklich als *nicht* umfangreich — bei mehreren Behandlern, Pflegedienst mit Dokumentation, Online-Buchung: streitig → im Zweifel bestellen, das ist billiger als die Diskussion
+- Einzelpraxis / kleiner Pflegedienst: ErwG 91 nennt den einzelnen Arzt ausdrücklich als *nicht* umfangreich — das gilt für die DSFA (Art. 35) **und** den DSB (Art. 37 Abs. 1 lit. c). Im Bericht: ErwG 91 für beides nennen, eine dokumentierte Schwellwertanalyse verlangen und die Tatsachen erfragen, die das Ergebnis ändern (Zahl der Behandler/Standorte, Personen mit regelmäßiger automatisierter Verarbeitung für § 38 BDSG ab 20, Plattform-/KI-Triage). Die offene Frage ist ⚪️, kein 🟠/🔴. Bei mehreren Behandlern, Pflegedienst mit Dokumentation, MVZ: umfangreich naheliegend → dann DSB/DSFA als Befund, mit Begründung — nicht „im Zweifel bestellen“
 
 ## DSFA (Art. 35)
 Nötig bei voraussichtlich hohem Risiko. Indizien: Art.-9-Daten in Umfang, Scoring/Profiling, systematische Überwachung, neue Technologien (auch KI-gestützte Auswertung, Chatbots mit Gesundheitsbezug, Session-Recording). **Positivlisten** der DSK / der Landesbehörden (z. B. LDI NRW) prüfen — WebSearch für die aktuelle Fassung.
