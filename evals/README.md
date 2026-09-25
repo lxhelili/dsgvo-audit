@@ -68,6 +68,8 @@ python -m scripts.run_eval --eval-set <repo>/evals/trigger-evals.json --skill-pa
 python -m scripts.run_loop --eval-set <repo>/evals/trigger-evals.json --skill-path <repo>/skills/dsgvo-audit --model <model-id> --verbose
 ```
 
+Two harness fixes are needed for a valid run (details and the failure pattern in `results/1.3.0-trigger.md`): add `--setting-sources project` to the `claude -p` command so an installed copy of the plugin does not compete with the test command, and give each query its own `tempfile.mkdtemp()` project root — stock `run_eval.py` shares one `.claude/commands/` across parallel workers, and the model then picks another worker's identical command, which scores as "not triggered" (symptom: positives near 0 %, negatives 100 %).
+
 A description that `run_loop` proposes still has to pass `npm run validate` (≤ 1024 chars, warning above 980) and still has to keep the "not for ordinary dev work" clause — the optimiser is judged on trigger rate, not on scope discipline, so read its output before applying it.
 
 ## When to run what
