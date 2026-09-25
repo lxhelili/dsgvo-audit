@@ -61,9 +61,12 @@ Jede Änderung landet sofort unter `## [Unreleased]` in `CHANGELOG.md`. Ein Rele
 ```bash
 npm run version:bump -- 1.1.0 --law-stand 2026-11   # verschiebt [Unreleased] nach [1.1.0], synchronisiert alle Versionsfelder
 npm test
-git commit -am "release: v1.1.0" && git tag v1.1.0
-git push && git push --tags          # release.yml baut die .skill und erstellt das GitHub-Release
+git checkout -b release/v1.1.0 && git commit -am "release: v1.1.0" && git push -u origin release/v1.1.0
+gh pr create --fill && gh pr merge --squash --delete-branch   # main ist geschützt: PR + grüne CI, kein direkter Push
+git checkout main && git pull && git tag v1.1.0 && git push origin v1.1.0   # release.yml baut die .skill und erstellt das GitHub-Release
 ```
+
+`main` ist geschützt: Jede Änderung, auch der Release-Commit, läuft über einen Pull Request mit grünem `validate-and-test`-Check; Force-Push und Löschen sind gesperrt, auch für Admins. Tags sind nicht geschützt — getaggt wird der gemergte Commit auf `main`.
 
 Der Bump verweigert ein leeres `[Unreleased]`; für einen „Recht geprüft, nichts geändert“-Patch `--allow-empty` mitgeben.
 

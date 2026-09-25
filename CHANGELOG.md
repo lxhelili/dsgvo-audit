@@ -6,6 +6,10 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+### Changed
+
+- `main` is protected (pull request + green `validate-and-test`, linear history, no force push or deletion, admins included). CONTRIBUTING, READMEs and the `version:bump` hint describe the release via a PR and tagging the merged commit.
+
 ## [1.2.3] – 2026-09-25
 
 ### Fixed

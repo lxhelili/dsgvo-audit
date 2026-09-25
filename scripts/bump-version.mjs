@@ -65,4 +65,4 @@ if (lawStand) {
   const months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
   edit(`${SKILL}/references/recht.md`, (t) => t.replace(/\*\*Stand: [^*]+\*\*/, `**Stand: ${months[Number(mo) - 1]} ${y}.**`));
 }
-console.log(`\n✅ version ${version}${lawStand ? `, law-stand ${lawStand}` : ''}. Next:\n   npm test && git commit -am "release: v${version}" && git tag v${version} && git push && git push --tags`);
+console.log(`\n✅ version ${version}${lawStand ? `, law-stand ${lawStand}` : ''}. Next (main is protected — release via PR):\n   npm test && git checkout -b release/v${version} && git commit -am "release: v${version}" && git push -u origin release/v${version}\n   gh pr create --fill && gh pr merge --squash --delete-branch   (after CI is green)\n   git checkout main && git pull && git tag v${version} && git push origin v${version}`);

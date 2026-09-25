@@ -98,7 +98,7 @@ scripts/                validate · package (.skill) · bump-version · grade-re
 
 Semantic versioning, tags `vX.Y.Z`, one changelog. Every release records a **law stand** (`metadata.law-stand` in SKILL.md, "Stand" in `recht.md`) — the month up to which the legal references were verified. If the stand is older than a few months, verify time-sensitive points (DPF list, new rulings, Digital Omnibus status) before relying on them; the skill tells Claude to do exactly that.
 
-Release flow for maintainers: `npm run version:bump -- 1.1.0 --law-stand 2026-11` → fill `CHANGELOG.md` → commit → `git tag v1.1.0` → push tag → the release workflow builds the `.skill` and publishes a GitHub Release.
+Release flow for maintainers: `npm run version:bump -- 1.1.0 --law-stand 2026-11` → fill `CHANGELOG.md` → release commit via pull request (`main` is protected) → tag the merged commit `v1.1.0` → push tag → the release workflow builds the `.skill` and publishes a GitHub Release.
 
 ## Evals
 
