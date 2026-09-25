@@ -126,3 +126,20 @@ Jeden Abschnitt durchgehen. Pro Punkt 🔴/🟠/🟡/🟢/⚪️ mit einzeiliger
 - [ ] BFSG (seit 28.06.2025): B2C-Shop/-Dienstleistung → Barrierefreiheit erwähnen, an Spezialisten verweisen
 - [ ] Shop: Widerrufsbelehrung, AGB, Preisangaben, Button-Lösung (§ 312j BGB)
 - [ ] Irreführende Aussagen (§ 5 UWG): „100 % DSGVO-konform“-Siegel, toter OS-Link, erfundene Zertifikate
+
+## 12. Betroffenenrechte — technisch prüfbar (Art. 12–22)
+
+Nur was Website und Code zeigen; der organisatorische Prozess (wer beantwortet, Fristenkontrolle) bleibt Frage an den Mandanten (Abschnitt 9). Fundstellen mit den Suchmustern aus `architecture.md` → „Betroffenenrechte im Code finden“.
+
+- [ ] Ein Kanal für Anfragen ist genannt (E-Mail in DSE/Impressum) und landet bei jemandem, der die Monatsfrist kennt (Art. 12 Abs. 3) — ein reines Kontaktformular ohne Adresse reicht nicht
+- [ ] **Löschung (Art. 17)**: Nutzerkonto → gibt es einen Delete-Flow (Self-Service oder Admin), der Auth-Nutzer, DB-Zeilen (Cascade oder explizit), Uploads im Storage, Newsletter-/CRM-Kontakt und Analytics-Profile erfasst? Oder löscht er nur die `users`-Zeile?
+- [ ] Löschung erreicht Empfänger (Art. 19): Mailer-Kontaktliste, CRM, Zahlungsdienst-Kunde, Sentry-User-Kontext
+- [ ] **Auskunft (Art. 15) / Übertragbarkeit (Art. 20)**: Bei Konten mit nennenswerten Daten ein Export (JSON/CSV) oder ein dokumentierter Admin-Weg; Art. 20 gilt nur für Daten auf Einwilligung/Vertrag, automatisiert verarbeitet
+- [ ] **Berichtigung (Art. 16)**: Profil-/Stammdaten im Konto änderbar oder per Anfrage
+- [ ] **Widerspruch (Art. 21)**: Newsletter mit Abmeldelink in jeder Mail und `List-Unsubscribe`-Header (Art. 21 Abs. 2/3, § 7 Abs. 3 Nr. 4 UWG); Analytics auf lit. f mit Opt-out-Weg oder begründeter Abwägung
+- [ ] **Widerruf der Einwilligung (Art. 7 Abs. 3)**: dauerhafter Link „Cookie-Einstellungen“ öffnet den Banner wieder, und der Widerruf **entfernt** Cookies/Storage und stoppt Skripte — nicht nur den Banner-Zustand speichern (Runtime-Scan nach Widerruf)
+- [ ] **Einschränkung (Art. 18)**: Sperrkennzeichen bzw. Soft-Delete-Flag, wenn Aufbewahrungspflichten der Löschung entgegenstehen (Löschkonzept)
+- [ ] **Automatisierte Entscheidung (Art. 22)**: KI-/Regel-Entscheidungen mit Außenwirkung (Ablehnung, Scoring) haben einen menschlichen Prüfweg (Abschnitt 7)
+- [ ] Identitätsprüfung bei Anfragen verhältnismäßig (keine Ausweiskopie für eine Newsletter-Auskunft)
+- [ ] Löschfristen umgesetzt, nicht nur beschrieben: Cron/TTL/Retention mit Fundstelle — sonst Löschkonzept (`assets/loeschkonzept-template.md`) mit Status (—)
+

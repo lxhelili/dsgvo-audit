@@ -120,7 +120,7 @@ Load `references/checklist.md` and work through every section. Status per item:
 | 🟢 **OK** | Conforms |
 | ⚪️ **Unklar** | Needs client input or runtime verification — say exactly what you need |
 
-For third-party services use `references/services.md` (legal basis, consent, transfer mechanism, safer alternative). For the legal reasoning, citations and current case law use `references/recht.md`. Verify anything time-sensitive — DPF list status of a specific entity, DSFA Positivlisten, new rulings — with a web search; `references/law-watch.md` lists the open points, what would change and where to check; the references carry a "Stand" date and the law moves.
+If the site belongs to a Heilberuf, Pflege/Therapie, Apotheke or aesthetic practice, or any input carries health data, also load `references/gesundheit.md` (Art. 9 triggers, § 203 StGB for every service provider, booking tools, DSFA/DSB thresholds, retention, HWG). For third-party services use `references/services.md` (legal basis, consent, transfer mechanism, safer alternative). For the legal reasoning, citations and current case law use `references/recht.md`. Verify anything time-sensitive — DPF list status of a specific entity, DSFA Positivlisten, new rulings — with a web search; `references/law-watch.md` lists the open points, what would change and where to check; the references carry a "Stand" date and the law moves.
 
 ### Phase 4 — Report
 
@@ -164,6 +164,7 @@ Evidence level per finding — the claim in the Befund, not the tool, decides:
 - **English version** for multilingual sites from `assets/privacy-policy-template.en.md` — same module numbers as the German template, so delete the same modules in both; the terminology table at its top keeps "processor / legitimate interest / withdrawal" consistent; section 21 says German prevails.
 - **Consent gating** per `references/patterns.md`: gate the *load*, not the *use*; nothing non-essential leaves the browser before consent; verify with the scanner afterwards.
 - **Cookie banner**: texts and category tables from `assets/cookie-banner-texte.md` (first layer, settings layer, two-click placeholder, footer link, English variant) — only the categories and services the "after accept" scan shows; no banner at all when nothing needs consent. Rules: no pre-ticked boxes; "Ablehnen" on the first layer, as prominent and as few clicks as "Akzeptieren"; granular purposes; withdrawal as easy as consent (Art. 7(3)) via a persistent link; links to DSE and Impressum; no nag loops or dark patterns; no cookie wall for essential content; the CMP itself hosted first-party or in the EU.
+- **Löschkonzept** from `assets/loeschkonzept-template.md` (DIN 66398: Löschklassen, Frist + Startzeitpunkt per Datenart, every hop where the data sits, status (S) proven / (A) client / (—) missing). Its periods must match the DSE and the VVT.
 - **VVT and TOMs** (checklist section 9) from `assets/vvt-template.md` and `assets/toms-template.md`: every row of the Datenfluss-Übersicht becomes one Verarbeitungstätigkeit; in the TOMs mark each measure (S) = proven by the scan/lint/code with the evidence location, or (A) = the client's statement — never upgrade an (A) to (S).
 - **Client delivery**: `scripts/render-report.mjs report.md --out report.html` turns any produced Markdown (report, DSE, Impressum, VVT, TOMs) into a self-contained HTML file (no external fonts or scripts — the report follows the skill's own rule) with print styles; `--pdf` adds a PDF via Playwright when it is installed.
 - **Re-audit and maintenance**: `scripts/diff-scans.mjs baseline.json current.json --md` compares two scans (or two lints, or a HAR with a scan) and lists what is new — 🔴 when it is a third-party origin/cookie before consent or after "Ablehnen", a new third-party form target, a new tracking/AI SDK, server-side recipient or non-EU region — and what is gone (remove it from DSE, banner and VVT). `--strict` exits 1 on a regression; `examples/ci/dsgvo-watch.yml` runs it weekly against a committed baseline, `dsgvo-gate.yml` shows per PR what the code adds.
@@ -202,6 +203,7 @@ Adjacent obligations to **flag, not audit** when someone asks "ist die Seite rec
 - `scripts/lib/signatures.mjs` — the one origin list all scripts share; `scripts/lib/processors.mjs` — role/contract per service
 - `references/architecture.md` — full-stack data-flow trace, hop by hop, with framework hints for finding handlers (Phase 1a, report section 3)
 - `references/checklist.md` — the audit checklist (Phase 3)
+- `references/gesundheit.md` — health profile: when a site is Art. 9, legal bases, § 203 StGB for every processor, booking/communication channels, DSFA/DSB, retention, HWG (load for health-sector sites)
 - `references/services.md` — per-service verdicts incl. AI APIs, captchas, analytics, hosting (Phase 3)
 - `references/recht.md` — norms, legal bases, case law, fines, DSB/DSFA triggers, rule-vs-law, RDG text; carries its Stand date
 - `references/law-watch.md` — open legal points (DPF appeal, Digital Omnibus, EinwV, KI-VO…), what would change, where to verify, re-check dates
@@ -210,6 +212,7 @@ Adjacent obligations to **flag, not audit** when someone asks "ist die Seite rec
 - `assets/impressum-template.md` — § 5 DDG template incl. Heilberufe / Pflegedienst variants
 - `assets/privacy-policy-template.en.md` — English mirror of the DSE template (same module numbers, terminology table, "German prevails" clause) for multilingual sites
 - `assets/cookie-banner-texte.md` — banner texts: first layer, settings layer with category tables, two-click placeholder, footer/withdrawal, English variant, and the rule checklist the texts must satisfy
+- `assets/loeschkonzept-template.md` — Löschkonzept after DIN 66398 with deletion classes and statutory periods, per-data-type status (S)/(A)/(—)
 - `assets/vvt-template.md` — Verzeichnis von Verarbeitungstätigkeiten (Art. 30) with the eleven typical website activities pre-structured
 - `assets/toms-template.md` — TOMs (Art. 32) along the Gewährleistungsziele, each measure marked (S) proven by scan/lint/code or (A) client statement
 - `scripts/render-report.mjs` — Markdown → self-contained HTML (print-ready) for client delivery; `--pdf` via Playwright when available (Phase 4/5)
