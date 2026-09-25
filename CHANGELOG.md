@@ -6,6 +6,14 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+### Added
+
+- `references/gesundheit.md` — health profile, loaded for Heilberufe, Pflege/Therapie, Apotheken, aesthetic practices or any health input: when a website is Art. 9 (incl. indirect disclosure, EuGH C-184/20), Art. 9(2)(h) + § 22 BDSG vs. explicit consent, § 203 StGB for **every** service provider (Abs. 4 S. 2 Nr. 1), booking and communication channels (Doctolib as link, Messenger, e-mail encryption, Videosprechstunde Anlage 31b BMV-Ä), DSFA/DSB thresholds (ErwG 91: single practice usually not large-scale), retention (§ 630f Abs. 3 BGB), Impressum and HWG flags, and the six findings that appear on almost every health website.
+- `assets/loeschkonzept-template.md` — Löschkonzept after DIN 66398: deletion classes L1–L8 with statutory periods (§ 257 HGB/§ 147 AO incl. 8 years for Buchungsbelege since 2025, § 630f BGB, AGG/ArbGG, § 195 BGB), one row per data type with start event, every hop where the data sits, and status (S) proven / (A) client / (—) missing; blocking instead of deletion (§ 35 Abs. 3 BDSG), Art. 17/19 process, deletion log.
+- `checklist.md` section 12 — data-subject rights as far as website and code show them: request channel, deletion reaching auth/storage/mailer/CRM/payment (Art. 17, 19), export (Art. 15, 20), rectification, objection (unsubscribe + `List-Unsubscribe`), withdrawal that actually removes cookies (Art. 7(3)), restriction flag, Art. 22 human review, proportionate identity checks, retention implemented not just described.
+- `architecture.md` — "Betroffenenrechte im Code finden": grep patterns for delete flows and cascades, export endpoints, unsubscribe/consent-reset, and cron/TTL/retention, with the typical gaps.
+- `evals.json`: eval 3 gained two expectations (§ 203 for every provider incl. hoster/mailbox/agency; proportionate DSFA/DSB).
+
 ### Changed
 
 - `main` is protected (pull request + green `validate-and-test`, linear history, no force push or deletion, admins included). CONTRIBUTING, READMEs and the `version:bump` hint describe the release via a PR and tagging the merged commit.

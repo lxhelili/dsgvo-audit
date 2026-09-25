@@ -201,7 +201,7 @@ const clean = () => { if (existsSync(OUT)) unlinkSync(OUT); };
   const hx = readFileSync(html, 'utf8');
   check(!/javascript:/.test(hx) && /href="https:\/\/example\.de"/.test(hx) && /href="\/datenschutz"/.test(hx), 'javascript: link neutralised, http(s) and relative links kept');
   rm(xss);
-  for (const t of ['vvt-template.md', 'toms-template.md', 'cookie-banner-texte.md', 'privacy-policy-template.en.md', 'datenschutzerklaerung-template.md', 'impressum-template.md']) {
+  for (const t of ['vvt-template.md', 'toms-template.md', 'loeschkonzept-template.md', 'cookie-banner-texte.md', 'privacy-policy-template.en.md', 'datenschutzerklaerung-template.md', 'impressum-template.md']) {
     const out = join(ROOT, 'dist-render-test.html');
     const rr = run('render-report.mjs', [join(ROOT, 'skills', 'dsgvo-audit', 'assets', t), '--out', out]);
     check(rr.code === 0 && readFileSync(out, 'utf8').includes('<h1'), `${t} renders`);

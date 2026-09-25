@@ -75,7 +75,9 @@
         "No Datenschutzerklärung is generated in this turn; instead the Phase-2 intake questions are asked in one batch (Verantwortlicher, Kammer/Berufsbezeichnung, hosting, processors/AVVs, DSB, retention)",
         "The response does not invent a Kammer, register number, or hosting provider for the practice",
         "The response distinguishes 'rechtswidrig' from 'konservative Regel' in its wording and ends with the RDG disclaimer",
-        "Vendor facts obtained by web research (e.g. Formspree storage location, DPA availability, DPF status) carry their source and date or are marked as to be verified — not stated as plain fact"
+        "Vendor facts obtained by web research (e.g. Formspree storage location, DPA availability, DPF status) carry their source and date or are marked as to be verified — not stated as plain fact",
+        "The § 203 StGB point covers every service provider that can see the content — hoster, form backend or booking tool, mailbox provider and the agency with admin access — with the confidentiality obligation of § 203 Abs. 4 StGB, not only the US services",
+        "The DSFA/DSB assessment is proportionate: for a single practice it asks for a documented threshold analysis (a single physician's practice is usually not 'large-scale', ErwG 91) instead of declaring a DSFA or a DSB mandatory across the board"
       ]
     },
     {

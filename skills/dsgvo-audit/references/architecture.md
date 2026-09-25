@@ -82,6 +82,27 @@ Für jeden: Zweck · Daten · Region · DPA/AVV unterschrieben und **abgelegt** 
 
 ---
 
+## Betroffenenrechte im Code finden
+
+Für Abschnitt 12 der Checkliste: ob Löschung, Export und Widerruf technisch existieren. Treffer sind Hinweise, keine Beweise — den Flow bis zu jedem Empfänger nachlesen.
+
+```bash
+# Löschung: Delete-Flows, Cascades, Auth-Löschung
+grep -rnEi 'deleteUser|auth\.admin\.deleteUser|deleteAccount|delete_account|removeUser|destroy\(|ON DELETE CASCADE|onDelete:\s*.?Cascade|softDelete|deleted_at' \
+  --include='*.ts' --include='*.tsx' --include='*.js' --include='*.sql' --include='*.prisma' --include='*.py' --include='*.php' --exclude-dir=node_modules .
+# Export / Auskunft
+grep -rnEi 'export(User|Data|Account)|download(My)?Data|gdpr|dsgvo|takeout|/api/(me|account)/(export|data)' \
+  --include='*.ts' --include='*.tsx' --include='*.js' --include='*.py' --include='*.php' --exclude-dir=node_modules .
+# Widerspruch / Widerruf: Abmeldung, List-Unsubscribe, Consent-Reset
+grep -rnEi 'unsubscribe|List-Unsubscribe|optout|opt-out|revoke|withdraw|cookie-?settings|showPreferences|openPreferences|Cookiebot\.renew|UC_UI\.showSecondLayer' \
+  --include='*.ts' --include='*.tsx' --include='*.js' --include='*.html' --include='*.astro' --include='*.vue' --include='*.svelte' --include='*.php' --exclude-dir=node_modules .
+# Aufbewahrung: Cron / TTL / Retention
+grep -rnEi 'cron|schedule\(|pg_cron|ttl|expire(s|At)?|retention|older_than|interval .?[0-9]+ (day|month)' \
+  --include='*.ts' --include='*.js' --include='*.sql' --include='*.json' --include='*.toml' --include='*.yml' --exclude-dir=node_modules .
+```
+
+Typische Lücken: der Delete-Flow löscht die `users`-Zeile, aber nicht den Auth-Nutzer, die Uploads im Bucket, den Resend-/Brevo-Kontakt oder den Stripe-Kunden; der Link „Cookie-Einstellungen“ öffnet den Banner, der Widerruf lässt `_ga` aber stehen; der Newsletter hat einen Abmeldelink, aber keinen `List-Unsubscribe`-Header.
+
 ## Handler finden — Framework-Hinweise
 
 Generisch: Suche nach dem, was PII entgegennimmt (`req.body`, `formData`, `request.json()`, `$_POST`), und folge den Aufrufen nach außen (`fetch`, SDK-Clients, `send`, `insert`).
