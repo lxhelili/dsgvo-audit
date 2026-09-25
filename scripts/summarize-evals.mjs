@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // summarize-evals.mjs — turns one evals/workspace/iteration-N/ into the committed results file.
 //
-// Reads, per eval and configuration (with_skill / without_skill / old_skill):
+// Reads, per eval and configuration (with_skill / without_skill / old_skill) — directly in <config>/ or,
+// for repeat runs, in <config>/run-1/, run-2/ … (summed; time/tokens averaged; flaky expectations listed):
 //   grading.json            LLM grader (skill-creator's agents/grader.md format: expectations[].passed)
 //   grading-structure.json  deterministic grader (scripts/grade-report.mjs --json), optional
 //   timing.json             { executor_duration_seconds, total_tokens }, optional
@@ -21,6 +22,44 @@ const OUT = opt('--out', null);
 const LABEL = opt('--label', basename(dir));
 const readJson = (p) => (existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null);
 
+function loadRun(p) {
+  const g = readJson(join(p, 'grading.json'));
+  if (!g) return null;
+  const s = readJson(join(p, 'grading-structure.json'));
+  return {
+    name: basename(p),
+    passed: g.summary?.passed ?? g.expectations.filter((x) => x.passed).length,
+    total: g.summary?.total ?? g.expectations.length,
+    expectations: g.expectations,
+    det: s ? { passed: s.summary?.passed ?? s.expectations.filter((x) => x.passed).length, total: s.summary?.total ?? s.expectations.length, failed: s.expectations.filter((x) => !x.passed) } : null,
+    timing: readJson(join(p, 'timing.json')),
+    feedback: g.eval_feedback,
+    claims: (g.claims || []).filter((x) => x.verified === false),
+  };
+}
+
+// Several runs of one configuration: sum the pass counts, average time and tokens, and name the
+// expectations that passed in some runs and failed in others — those are variance, not signal.
+function aggregate(runs) {
+  const multi = runs.length > 1;
+  const tag = (r, t) => (multi ? `[${r.name}] ${t}` : t);
+  const dets = runs.map((r) => r.det).filter(Boolean);
+  const timed = runs.map((r) => r.timing).filter((t) => t?.executor_duration_seconds);
+  const byText = new Map();
+  for (const r of runs) for (const x of r.expectations) byText.set(x.text, [...(byText.get(x.text) || []), x.passed]);
+  return {
+    runs: runs.map((r) => ({ name: r.name, passed: r.passed, total: r.total })),
+    passed: runs.reduce((a, r) => a + r.passed, 0),
+    total: runs.reduce((a, r) => a + r.total, 0),
+    failed: runs.flatMap((r) => r.expectations.filter((x) => !x.passed).map((x) => ({ ...x, text: tag(r, x.text) }))),
+    flaky: multi ? [...byText.entries()].filter(([, v]) => v.some(Boolean) && !v.every(Boolean)).map(([text, v]) => ({ text, passes: v.filter(Boolean).length, runs: v.length })) : [],
+    det: dets.length ? { passed: dets.reduce((a, d) => a + d.passed, 0), total: dets.reduce((a, d) => a + d.total, 0), failed: runs.flatMap((r) => (r.det?.failed || []).map((x) => ({ ...x, text: tag(r, x.text) }))) } : null,
+    timing: timed.length ? { executor_duration_seconds: timed.reduce((a, t) => a + t.executor_duration_seconds, 0) / timed.length, total_tokens: timed.reduce((a, t) => a + (t.total_tokens || 0), 0) / timed.length } : null,
+    feedback: runs.find((r) => r.feedback)?.feedback,
+    claims: runs.flatMap((r) => r.claims),
+  };
+}
+
 const evals = readdirSync(dir).filter((n) => statSync(join(dir, n)).isDirectory()).sort();
 const CONFIGS = ['with_skill', 'old_skill', 'without_skill'];
 const rows = [];
@@ -28,26 +67,19 @@ for (const e of evals) {
   const meta = readJson(join(dir, e, 'eval_metadata.json'));
   const row = { name: e, id: meta?.eval_id, configs: {} };
   for (const c of CONFIGS) {
-    const g = readJson(join(dir, e, c, 'grading.json'));
-    if (!g) continue;
-    const s = readJson(join(dir, e, c, 'grading-structure.json'));
-    const t = readJson(join(dir, e, c, 'timing.json'));
-    row.configs[c] = {
-      passed: g.summary?.passed ?? g.expectations.filter((x) => x.passed).length,
-      total: g.summary?.total ?? g.expectations.length,
-      failed: g.expectations.filter((x) => !x.passed),
-      det: s ? { passed: s.summary?.passed ?? s.expectations.filter((x) => x.passed).length, total: s.summary?.total ?? s.expectations.length, failed: s.expectations.filter((x) => !x.passed) } : null,
-      timing: t,
-      feedback: g.eval_feedback,
-      claims: (g.claims || []).filter((x) => x.verified === false),
-    };
+    // repeat runs live in <config>/run-N/; a single run sits directly in <config>/
+    const base = join(dir, e, c);
+    const runDirs = existsSync(base) ? readdirSync(base).filter((n) => /^run-\d+$/.test(n)).sort().map((n) => join(base, n)) : [];
+    const runs = (runDirs.length ? runDirs : [base]).map(loadRun).filter(Boolean);
+    if (!runs.length) continue;
+    row.configs[c] = aggregate(runs);
   }
   rows.push(row);
 }
 const present = CONFIGS.filter((c) => rows.some((r) => r.configs[c]));
 const tot = (c) => rows.reduce((a, r) => (r.configs[c] ? { p: a.p + r.configs[c].passed, t: a.t + r.configs[c].total } : a), { p: 0, t: 0 });
 const pct = (p, t) => (t ? `${Math.round((p / t) * 100)} %` : '—');
-const fmt = (c) => (c ? `${c.passed}/${c.total}` : '—');
+const fmt = (c) => (c ? `${c.passed}/${c.total}${c.runs?.length > 1 ? ` (${c.runs.map((r) => r.passed).join(' · ')})` : ''}` : '—');
 const secs = (c) => (c?.timing?.executor_duration_seconds ? `${Math.round(c.timing.executor_duration_seconds)} s` : '—');
 const toks = (c) => (c?.timing?.total_tokens ? `${Math.round(c.timing.total_tokens / 1000)}k` : '—');
 
@@ -74,6 +106,12 @@ L.push(`| Eval | ${present.map((c) => `${c.replace('_', ' ')} time · tokens`).j
 L.push(`|---|${present.map(() => '---').join('|')}|`);
 for (const r of rows) L.push(`| ${r.name} | ${present.map((c) => `${secs(r.configs[c])} · ${toks(r.configs[c])}`).join(' | ')} |`);
 L.push('');
+{
+  const flaky = rows.flatMap((r) => present.flatMap((c) => (r.configs[c]?.flaky || []).map((f) => `- ${r.name} (${c.replace('_', ' ')}): ${f.text} — passed ${f.passes}/${f.runs}`)));
+  if (rows.some((r) => present.some((c) => r.configs[c]?.runs.length > 1))) {
+    L.push('## Flaky expectations (passed in some runs, failed in others)', '', ...(flaky.length ? flaky : ['_none_']), '');
+  }
+}
 L.push('## Failed expectations', '');
 for (const r of rows) for (const c of present) {
   const cfg = r.configs[c]; if (!cfg) continue;

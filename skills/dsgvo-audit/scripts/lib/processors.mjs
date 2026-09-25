@@ -67,7 +67,9 @@ export const PROCESSORS = [
   { name: 'Mollie', match: /^mollie$/, role: 'eigener', region: 'NL', contract: 'eigener Verantwortlicher (Zahlungsdienst)', transfer: '—' },
 
   // Server side: mail, DB, AI, automation
-  { name: 'Resend', match: /^resend$/, role: 'AV', region: 'US, EU-Region wählbar', contract: 'Resend DPA', transfer: 'EU-Region; sonst DPF/SCC' },
+  // Resend's sending region only changes where mail is sent from — account data, metadata and logs stay in the US
+  // (resend.com/docs/dashboard/domains/regions, checked 2026-09-25), so it never replaces a transfer mechanism.
+  { name: 'Resend', match: /^resend$/, role: 'AV', region: 'US (Konto, Metadaten, Logs); EU-Versandregion ändert nur den Versandort', contract: 'Resend DPA', transfer: 'DPF/SCC prüfen — auch bei EU-Versandregion' },
   { name: 'Twilio / SendGrid', match: /^@sendgrid\/|^sendgrid$|^twilio$/, role: 'AV', region: 'US (Twilio)', contract: 'DPA', transfer: 'DPF/SCC prüfen' },
   { name: 'Postmark', match: /^postmark$/, role: 'AV', region: 'US', contract: 'DPA', transfer: 'DPF/SCC prüfen' },
   { name: 'Mailgun', match: /^mailgun$/, role: 'AV', region: 'US oder EU-Region', contract: 'DPA', transfer: 'EU-Region; sonst DPF/SCC' },

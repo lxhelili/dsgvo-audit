@@ -6,6 +6,18 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+### Fixed
+
+- `processors.mjs` / `services.md`: Resend's EU region was presented as removing the US transfer ("EU-Region; sonst DPF/SCC"). Per Resend's documentation the region only changes where mail is sent from; account data, metadata and logs stay in the US — the transfer mechanism (DPF/SCC) is needed either way. Three of four iteration-4 runs repeated the wrong claim from the tool output.
+- `grade-report.mjs`: a „Kein OS-Plattform-Link | ⚪️ | Inhalt fehlt“ checklist row counted as advice to add the link. Test added.
+- `evals.json`: eval 4's `--expect "6 Monate"` failed a DSE that writes „sechs Monate“ — now `(6|sechs) Monate`.
+
+### Changed
+
+- SKILL.md Phase 5: provider addresses from general knowledge and technical claims the code does not show (HTTPS/TLS) are listed for the client to check — both 1.2.2 runs of eval 4 wrote them into the DSE unflagged.
+- `summarize-evals.mjs` reads repeat runs (`<config>/run-N/`), sums pass counts, averages time and tokens, and lists flaky expectations. `evals/README.md` documents the run hygiene learned in iterations 2–4 (snapshots for both configurations, hidden grading key, repeat runs, one grader per eval).
+- `docs/`: the site covers evidence IDs, the processor overview and the scan diff, and shows the measured iteration-1 numbers instead of illustrative ones.
+
 ## [1.2.2] – 2026-09-24
 
 ### Fixed
