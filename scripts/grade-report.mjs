@@ -93,16 +93,21 @@ if (reportPath) {
   // `u` flag: without it the character class matches UTF-16 code units, and 🟡/🟢 share a surrogate with 🔴/🟠
   const blocks = [...t.matchAll(/^#{2,4}\s+([🔴🟠])[^\n]*\n([\s\S]*?)(?=^#{1,4}\s|\n---|(?![\s\S]))/gmu)];
   const critical = blocks.length;
+  // A clean site legitimately has no 🔴/🟠 block — accepted only when section 2 says so in words,
+  // so a report that merely formats its findings as table rows still fails.
+  const section2 = t.split(/^#{1,4}\s+/m).find((s) => /^(\d+[.)]?\s*)?kritische und hohe befunde/i.test(s)) || '';
+  const noneDeclared = critical === 0 && /keine\s+(kritischen|hohen|🔴|🟠|befunde)|no\s+(critical|high)/iu.test(section2);
+  const okBlocks = critical > 0 || noneDeclared;
   const incomplete = blocks.filter(([, , body]) => !(/befund/i.test(body) && /rechtsgrundlage/i.test(body) && /risiko/i.test(body) && /maßnahme/i.test(body) && /aufwand/i.test(body)));
-  check(`Every 🔴/🟠 finding block has Befund · Rechtsgrundlage · Risiko · Maßnahme · Aufwand (${critical} blocks)`, critical > 0 && incomplete.length === 0,
-    critical === 0 ? 'no 🔴/🟠 finding headings found (### 🔴 K-01 …)' : incomplete.length ? `incomplete: ${incomplete.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all complete');
+  check(`Every 🔴/🟠 finding block has Befund · Rechtsgrundlage · Risiko · Maßnahme · Aufwand (${critical} blocks)`, okBlocks && incomplete.length === 0,
+    noneDeclared ? 'no 🔴/🟠 findings — section 2 says so' : critical === 0 ? 'no 🔴/🟠 finding headings found (### 🔴 K-01 …)' : incomplete.length ? `incomplete: ${incomplete.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all complete');
   const uncited = blocks.filter(([, , body]) => !/Art\.\s?\d+|§\s?\d+/.test(body));
-  check('Every 🔴/🟠 finding cites a norm (Art. … / § …)', critical > 0 && uncited.length === 0, uncited.length ? `uncited: ${uncited.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all cited');
+  check('Every 🔴/🟠 finding cites a norm (Art. … / § …)', okBlocks && uncited.length === 0, uncited.length ? `uncited: ${uncited.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all cited');
   // Evidence (v1.2): each 🔴/🟠 finding says which observation it rests on and how certain it is,
   // and every ID it cites exists in the Evidenzverzeichnis — a finding without a traceable source is an opinion.
   const EVIDENCE_ID = /\bE-\d{2,3}\b/g;
   const unevidenced = blocks.filter(([, , body]) => !(/evidenz/i.test(body) && /\bE-\d{2,3}\b/.test(body) && /beobachtet|abgeleitet|mandantenangabe/i.test(body)));
-  check('Every 🔴/🟠 finding names its evidence (E-xx) and level (beobachtet · abgeleitet · Mandantenangabe)', critical > 0 && unevidenced.length === 0,
+  check('Every 🔴/🟠 finding names its evidence (E-xx) and level (beobachtet · abgeleitet · Mandantenangabe)', okBlocks && unevidenced.length === 0,
     unevidenced.length ? `without evidence line: ${unevidenced.map((b) => b[0].split('\n')[0].trim()).join(' | ')}` : 'all carry evidence');
   const regHeading = t.match(/^(#{2,4})\s+[^\n]*evidenzverzeichnis[^\n]*$/im);
   const registry = regHeading ? t.slice(regHeading.index + regHeading[0].length).split(new RegExp(`^#{1,${regHeading[1].length}}\\s`, 'm'))[0] : '';

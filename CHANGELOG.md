@@ -17,6 +17,8 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 - Phase 4: the eight report headings stay verbatim in a short report („Kurzbericht“) — shorten the content, not the structure.
 - Claims about later behaviour (after reload, next page, withdrawal) must follow from code that was read — a cookie keeps a script running only if something reads it on load; and the chat answer must match the report's findings (e.g. file name vs. file when `enctype` is missing).
+- `scripts/grade-report.mjs`: a report with no 🔴/🟠 block passes the finding checks when section 2 says so („keine kritischen … Befunde“); findings formatted only as table rows still fail.
+- Evals: new eval 7 `rpc-delete-hidden-gaps`; measured in `evals/results/1.3.2-iteration-8.md`: 173/178 vs 166/178 against 1.3.1, no eval regresses.
 
 ## [1.3.1] – 2026-09-25
 
