@@ -64,7 +64,7 @@ Speicherdauer: bis zur Löschung des Kontos; danach [X TAGE] zur Abwicklung, ges
 
 **[MODUL Zahlungsabwicklung]**
 ### 10. Zahlungsabwicklung
-Zahlungen werden über [STRIPE / PAYPAL / MOLLIE — FIRMA, ANSCHRIFT, LAND] abgewickelt. Der Zahlungsdienstleister verarbeitet Ihre Zahlungsdaten in eigener Verantwortung; wir erhalten nur Bestätigung, Betrag und eine Transaktions-ID. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO. Drittlandtransfer: [Mechanismus]. Datenschutzerklärung des Anbieters: [URL]. Aufbewahrung der Buchungsdaten: 10 Jahre (§ 147 AO, § 257 HGB).
+Zahlungen werden über [STRIPE / PAYPAL / MOLLIE — FIRMA, ANSCHRIFT, LAND] abgewickelt. Der Zahlungsdienstleister verarbeitet Ihre Zahlungsdaten in eigener Verantwortung; wir erhalten nur Bestätigung, Betrag und eine Transaktions-ID. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO. Drittlandtransfer: [Mechanismus]. Datenschutzerklärung des Anbieters: [URL]. Aufbewahrung der Rechnungs- und Buchungsbelege: 8 Jahre ab Ende des Kalenderjahres (§ 147 AO, § 257 HGB).
 
 **[MODUL Newsletter]**
 ### 11. Newsletter

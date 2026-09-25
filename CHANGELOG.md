@@ -6,6 +6,18 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.3.2] – 2026-09-25
+
+### Fixed
+
+- Retention periods under § 147 AO / § 257 HGB: `vvt-template.md`, `datenschutzerklaerung-template.md` and `privacy-policy-template.en.md` still said 10 years for invoices/payment records; since 2025 Buchungsbelege are kept 8 years (books and annual accounts 10, business letters 6) — now consistent with `loeschkonzept-template.md`.
+- `assets/impressum-template.md`: a client that declares itself willing to use Verbraucherschlichtung needs the § 36 VSBG notice regardless of headcount.
+
+### Changed
+
+- Phase 4: the eight report headings stay verbatim in a short report („Kurzbericht“) — shorten the content, not the structure.
+- Claims about later behaviour (after reload, next page, withdrawal) must follow from code that was read — a cookie keeps a script running only if something reads it on load; and the chat answer must match the report's findings (e.g. file name vs. file when `enctype` is missing).
+
 ## [1.3.1] – 2026-09-25
 
 ### Fixed
@@ -156,7 +168,8 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.2...v1.2.3

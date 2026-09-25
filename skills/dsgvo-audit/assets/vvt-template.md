@@ -32,7 +32,7 @@ Pflichtangaben je Tätigkeit (Art. 30 Abs. 1 lit. a–g): Verantwortlicher · Zw
 | 5 | Newsletter | Art. 6(1)(a), § 7 Abs. 2 Nr. 2 UWG | [VERSANDDIENST] | [nein / ja] | [bis Widerruf + Nachweis X] |
 | 6 | Bewerbungen | § 26 Abs. 1 BDSG, Art. 6(1)(b) | [BEWERBERTOOL / POSTFACH] | [nein / ja] | [6 Monate nach Abschluss] |
 | 7 | Nutzerkonto / Login | Art. 6(1)(b), (f) für Sicherheitslogs | [AUTH-ANBIETER, DB] | [nein / ja] | [bis Kontolöschung + X] |
-| 8 | Zahlungsabwicklung | Art. 6(1)(b), (c) | [PAYMENT-ANBIETER] | [nein / ja] | [10 Jahre § 147 AO] |
+| 8 | Zahlungsabwicklung | Art. 6(1)(b), (c) | [PAYMENT-ANBIETER] | [nein / ja] | [8 Jahre Buchungsbelege / 10 Jahre Bücher, § 147 AO] |
 | 9 | KI-gestützte Funktion (Chat, Triage) | Art. 6(1)(b)/(f) | [LLM-ANBIETER] | [nein / ja] | [X] |
 | 10 | Fehlerprotokollierung / Monitoring | Art. 6(1)(f) | [ERROR-TRACKING] | [nein / ja] | [X Tage] |
 | 11 | Einwilligungsverwaltung (Consent-Protokoll) | Art. 6(1)(c) i. V. m. Art. 7(1) | [CMP-ANBIETER oder first-party] | [nein / ja] | [X Monate / Jahre] |
@@ -139,7 +139,7 @@ Pflichtangaben je Tätigkeit (Art. 30 Abs. 1 lit. a–g): Verantwortlicher · Zw
 | Datenkategorien | Bei uns: Bestätigung, Betrag, Transaktions-ID, Rechnungsdaten; Zahlungsdaten selbst beim Anbieter |
 | Empfänger | [ZAHLUNGSANBIETER, FIRMA, LAND] — eigener Verantwortlicher für den Zahlungsvorgang |
 | Drittlandübermittlung | [Mechanismus des Anbieters] |
-| Löschfrist | 10 Jahre (§ 147 AO) |
+| Löschfrist | Rechnungen/Buchungsbelege 8 Jahre, Bücher und Jahresabschlüsse 10 Jahre, Geschäftsbriefe 6 Jahre — jeweils ab Ende des Kalenderjahres (§ 147 AO, § 257 HGB; Buchungsbelege seit 2025 8 statt 10 Jahre, Stand prüfen) |
 
 ### Tätigkeit 9 — KI-gestützte Funktion
 
