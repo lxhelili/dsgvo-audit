@@ -117,7 +117,9 @@ if (reportPath) {
   { const m = forbiddenClaim(t); check('Report makes no forbidden claim (abmahnsicher, 100 % konform, garantiert …)', !m, excerpt(m)); }
   check('Report has no leftover template placeholder', !PLACEHOLDER.test(prose(t)), excerpt(prose(t).match(PLACEHOLDER)?.[0]));
   const addOdr = t.match(/os-plattform(-link)?[^\n]{0,80}(?<!nicht )(einfügen|ergänzen|hinzufügen|aufnehmen|verlinken)|(link|verlinkung)[^\n]{0,60}os-plattform[^\n]{0,60}(?<!nicht )(einfügen|ergänzen|hinzufügen|aufnehmen)|os-plattform[^\n]{0,80}(fehlt|muss verlinkt|ist pflicht)/i);
-  check('Report does not recommend adding the OS-Plattform link', !addOdr, addOdr ? excerpt(addOdr[0]) : 'no "add the ODR link" wording');
+  // „Kein OS-Plattform-Link | ⚪️ | Inhalt fehlt“ is a checklist row confirming the link is absent, not advice to add one
+  const odrNegated = addOdr && /(kein|keine|keinen|ohne|nicht)\s*[^\n]{0,15}$/i.test(t.slice(Math.max(0, addOdr.index - 25), addOdr.index + addOdr[0].search(/os-plattform/i)));
+  check('Report does not recommend adding the OS-Plattform link', !addOdr || odrNegated, addOdr && !odrNegated ? excerpt(addOdr[0]) : 'no "add the ODR link" wording');
 }
 
 // ---------------- Datenschutzerklärung ----------------

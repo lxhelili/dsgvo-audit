@@ -63,7 +63,7 @@ Spalten: **Consent (§ 25)** = braucht Endgerät-Einwilligung · **Basis** = DSG
 | Firebase (Auth/Firestore/Hosting) | — (Analytics: ja) | 6(1)(b)/(f) | Google/US; EU-Region für Firestore wählbar | 🟠 Firebase Analytics **deaktivieren** oder Consent; DPA (Google Cloud); Auth-Daten gehen an Google → DSE |
 | Neon / PlanetScale / Turso | — | 6(1)(b)/(f) | EU-Region wählbar | 🟡 EU-Region + DPA |
 | Sentry | — (Replay: ja) | 6(1)(f) | EU-Region verfügbar | 🟡 EU-DSN, `sendDefaultPii: false`, Scrubbing, Session Replay nur mit Consent |
-| Resend / Postmark / SendGrid / SES | — | 6(1)(b)/(f) | US, EU-Region teils | 🟡 DPA; EU-Region wo verfügbar; **Open-/Click-Tracking aus**; Inhalte minimieren (keine Art.-9-Daten in Mails an US-Mailer) |
+| Resend / Postmark / SendGrid / SES | — | 6(1)(b)/(f) | US, EU-Region teils | 🟡 DPA; EU-Region wo verfügbar — aber prüfen, *was* sie abdeckt: bei Resend ändert die EU-Region nur den Versandort, Konto-, Metadaten und Logs bleiben in den USA (Resend-Doku „Regions“, Stand 2026-09), der Transfermechanismus bleibt also nötig; **Open-/Click-Tracking aus**; Inhalte minimieren (keine Art.-9-Daten in Mails an US-Mailer) |
 | Brevo (FR) / CleverReach / Rapidmail (DE) | Newsletter: 6(1)(a) | — | EU/DE | 🟢 AVV + DOI |
 | Mailchimp | Newsletter: 6(1)(a) | — | US | 🟠 Alternative EU-Anbieter |
 | Stripe / PayPal / Mollie | — | 6(1)(b) | US / NL | 🟡 Zahlungsteil eigenverantwortlich (Stripe/PayPal als eigene Verantwortliche); Stripe.js erst auf Checkout laden; nennen |

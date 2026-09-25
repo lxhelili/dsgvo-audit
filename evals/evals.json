@@ -114,7 +114,7 @@
         "--expect",
         "7 Tage",
         "--expect",
-        "6 Monate"
+        "(6|sechs) Monate"
       ]
     },
     {
