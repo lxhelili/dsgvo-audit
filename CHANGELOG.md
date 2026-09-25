@@ -6,12 +6,15 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.3.0] – 2026-09-25
+
 ### Added
 
 - `references/gesundheit.md` — health profile, loaded for Heilberufe, Pflege/Therapie, Apotheken, aesthetic practices or any health input: when a website is Art. 9 (incl. indirect disclosure, EuGH C-184/20), Art. 9(2)(h) + § 22 BDSG vs. explicit consent, § 203 StGB for **every** service provider (Abs. 4 S. 2 Nr. 1), booking and communication channels (Doctolib as link, Messenger, e-mail encryption, Videosprechstunde Anlage 31b BMV-Ä), DSFA/DSB thresholds (ErwG 91: single practice usually not large-scale), retention (§ 630f Abs. 3 BGB), Impressum and HWG flags, and the six findings that appear on almost every health website.
 - `assets/loeschkonzept-template.md` — Löschkonzept after DIN 66398: deletion classes L1–L8 with statutory periods (§ 257 HGB/§ 147 AO incl. 8 years for Buchungsbelege since 2025, § 630f BGB, AGG/ArbGG, § 195 BGB), one row per data type with start event, every hop where the data sits, and status (S) proven / (A) client / (—) missing; blocking instead of deletion (§ 35 Abs. 3 BDSG), Art. 17/19 process, deletion log.
 - `checklist.md` section 12 — data-subject rights as far as website and code show them: request channel, deletion reaching auth/storage/mailer/CRM/payment (Art. 17, 19), export (Art. 15, 20), rectification, objection (unsubscribe + `List-Unsubscribe`), withdrawal that actually removes cookies (Art. 7(3)), restriction flag, Art. 22 human review, proportionate identity checks, retention implemented not just described.
 - `architecture.md` — "Betroffenenrechte im Code finden": grep patterns for delete flows and cascades, export endpoints, unsubscribe/consent-reset, and cron/TTL/retention, with the typical gaps.
+- Measured in `evals/results/1.3.0-iteration-5.md`: 110/112 vs 108/112 against 1.2.3 (two runs each), no regression, no flaky expectation; the health profile made § 203 a dedicated finding covering every provider in both runs.
 - `evals.json`: eval 3 gained two expectations (§ 203 for every provider incl. hoster/mailbox/agency; proportionate DSFA/DSB).
 
 ### Changed
@@ -137,7 +140,8 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.3...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.0...v1.2.1
