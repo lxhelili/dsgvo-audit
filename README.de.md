@@ -92,7 +92,7 @@ scripts/                validate · package (.skill) · bump-version · grade-re
 
 Semantic Versioning, Tags `vX.Y.Z`, ein Changelog. Jedes Release trägt einen **Rechtsstand** (`metadata.law-stand` in SKILL.md, „Stand“ in `recht.md`) — der Monat, bis zu dem die Rechtsquellen geprüft wurden. Ist der Stand älter als ein paar Monate, zeitkritische Punkte (DPF-Liste, neue Urteile, Digital-Omnibus-Status) vor Verwendung prüfen; genau das trägt der Skill Claude auch auf.
 
-Release-Ablauf für Maintainer: `npm run version:bump -- 1.1.0 --law-stand 2026-11` → `CHANGELOG.md` ausfüllen → Commit → `git tag v1.1.0` → Tag pushen → der Release-Workflow baut die `.skill` und veröffentlicht ein GitHub-Release.
+Release-Ablauf für Maintainer: `npm run version:bump -- 1.1.0 --law-stand 2026-11` → `CHANGELOG.md` ausfüllen → Release-Commit per Pull Request (`main` ist geschützt) → gemergten Commit mit `v1.1.0` taggen → Tag pushen → der Release-Workflow baut die `.skill` und veröffentlicht ein GitHub-Release.
 
 ## Evals
 
