@@ -6,6 +6,8 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 
 ## [Unreleased]
 
+## [1.2.3] – 2026-09-25
+
 ### Fixed
 
 - `processors.mjs` / `services.md`: Resend's EU region was presented as removing the US transfer ("EU-Region; sonst DPF/SCC"). Per Resend's documentation the region only changes where mail is sent from; account data, metadata and logs stay in the US — the transfer mechanism (DPF/SCC) is needed either way. Three of four iteration-4 runs repeated the wrong claim from the tool output.
@@ -123,7 +125,8 @@ Initial release. Law stand: 2026-09.
 - `docs/` — interactive "How it works" page in English and German (GitHub Pages from `main` → `/docs`), fonts self-hosted under `docs/fonts/` so the page follows the skill's own rule.
 - Node ≥ 22.
 
-[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/lxhelili/dsgvo-audit/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/lxhelili/dsgvo-audit/compare/v1.1.0...v1.2.0
