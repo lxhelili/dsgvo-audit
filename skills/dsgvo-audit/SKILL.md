@@ -3,7 +3,7 @@ name: dsgvo-audit
 description: Audit a website, web app or codebase for DSGVO/GDPR, TDDDG (cookie consent) and DDG (Impressum) compliance under German law, tracing personal data from browser to backend to third parties, and generate or fix the Datenschutzerklärung, Impressum, cookie banner and consent gating. Use when the user shares a site or repo for review, asks whether a site is "legally OK" or "abmahnsicher", or mentions Datenschutz, DSGVO, GDPR, Datenschutzerklärung, Privacy Policy, Impressum, Cookie-Banner, Consent, TDDDG, AVV/DPA, Auftragsverarbeitung, Drittlandtransfer or Abmahnung, even casually ("check this site", "add datenschutz"). Also use when a third-party service is added to a client site (analytics, fonts, maps, captcha, pixel, embeds, booking, newsletter, AI/LLM API, chat widget, payment, social login) or the user asks whether it is allowed. Not for ordinary dev work that merely uses Supabase, Vercel or Resend without a compliance question.
 license: MIT
 metadata:
-  version: "1.2.3"
+  version: "1.3.0"
   law-stand: "2026-09"
   repository: https://github.com/lxhelili/dsgvo-audit
 ---
