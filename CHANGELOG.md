@@ -20,6 +20,7 @@ Each release also carries a `law-stand` (YYYY-MM) in `SKILL.md` → the month up
 - Management Summary names the states a scan did not cover, always including „nach Widerruf“ (the scanner has no withdrawal phase).
 - Every concrete vendor fact (storage location, retention, training, region, DPA) carries a dated source or a per-fact „(prüfen)“ — a generic footnote no longer counts. `list-processors.mjs --md` marks contract and region per cell.
 - `checklist.md` section 6: read form attributes before saying what is transmitted — a file input without `enctype="multipart/form-data"` sends only the file name; `method="get"` puts every field in the URL.
+- Measured in `evals/results/1.3.1-iteration-7.md`: 150/152 vs 139/152 against 1.3.0 (two runs each), no eval regresses; the iteration-6 failures shared by every run (abgeleitet never used, withdrawal state unnamed, vendor facts from memory) are gone. Eval set: new eval 6 `member-portal-rights`, sharper expectations for evals 1–5 (`evals/results/1.3.0-iteration-6.md`).
 
 ## [1.3.0] – 2026-09-25
 
