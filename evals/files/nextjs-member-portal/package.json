@@ -1,0 +1,14 @@
+{
+  "name": "yogastudio-beispiel-mitglieder",
+  "private": true,
+  "dependencies": {
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@supabase/supabase-js": "2.49.0",
+    "@supabase/ssr": "0.6.1",
+    "stripe": "18.0.0",
+    "@getbrevo/brevo": "2.2.0",
+    "@sentry/nextjs": "9.10.0"
+  }
+}
